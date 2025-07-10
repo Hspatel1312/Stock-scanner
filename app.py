@@ -101,25 +101,44 @@ class EnhancedStockScanner:
         self.holidays = self.load_holidays()
         
     def load_holidays(self) -> set:
-        """Load holidays from uploaded file or default list"""
+        """Load holidays from embedded data or uploaded file"""
         try:
-            # Try to read uploaded holidays file
+            # Default holidays for 2025 (embedded in code)
+            default_holidays = [
+                "2025-02-26",  # Mahashivratri
+                "2025-03-14",  # Holi
+                "2025-03-31",  # Id-Ul-Fitr (Ramadan Eid)
+                "2025-04-10",  # Shri Mahavir Jayanti
+                "2025-04-14",  # Dr. Baba Saheb Ambedkar Jayanti
+                "2025-04-18",  # Good Friday
+                "2025-05-01",  # Maharashtra Day
+                "2025-08-15",  # Independence Day / Parsi New Year
+                "2025-08-27",  # Shri Ganesh Chaturthi
+                "2025-10-02",  # Mahatma Gandhi Jayanti/Dussehra
+                "2025-10-21",  # Diwali Laxmi Pujan
+                "2025-10-22",  # Balipratipada
+                "2025-11-05",  # Prakash Gurpurb Sri Guru Nanak Dev
+                "2025-12-25"   # Christmas
+            ]
+            
+            # Try to read uploaded holidays file first
             if os.path.exists('holidays_2025.csv'):
                 holidays_df = pd.read_csv('holidays_2025.csv')
                 holidays = set(pd.to_datetime(holidays_df['Date'], format='%d-%b-%Y').dt.date)
                 return holidays
             else:
-                # Default holidays for 2025
-                default_holidays = [
-                    "2025-02-26", "2025-03-14", "2025-03-31", "2025-04-10",
-                    "2025-04-14", "2025-04-18", "2025-05-01", "2025-08-15",
-                    "2025-08-27", "2025-10-02", "2025-10-21", "2025-10-22",
-                    "2025-11-05", "2025-12-25"
-                ]
+                # Use embedded default holidays
                 return set(pd.to_datetime(default_holidays).date)
         except Exception as e:
-            st.error(f"Error loading holidays: {str(e)}")
-            return set()
+            st.warning(f"Using default holidays due to error: {str(e)}")
+            # Fallback to embedded holidays
+            default_holidays = [
+                "2025-02-26", "2025-03-14", "2025-03-31", "2025-04-10",
+                "2025-04-14", "2025-04-18", "2025-05-01", "2025-08-15",
+                "2025-08-27", "2025-10-02", "2025-10-21", "2025-10-22",
+                "2025-11-05", "2025-12-25"
+            ]
+            return set(pd.to_datetime(default_holidays).date)
     
     def get_trading_days(self, start_date: datetime, end_date: datetime) -> List[datetime]:
         """Generate trading days between start and end date"""
@@ -550,38 +569,119 @@ def main():
                     </div>
                     """, unsafe_allow_html=True)
             
-            # File upload or use default
+            # Stock universe selection
             st.subheader("📁 Stock Universe")
-            uploaded_file = st.file_uploader("Upload stock list CSV (optional)", type="csv")
             
-            if uploaded_file is not None:
-                try:
-                    df = pd.read_csv(uploaded_file)
-                    if 'Symbol' in df.columns:
-                        symbols = df['Symbol'].tolist()
-                        st.success(f"✅ Loaded {len(symbols)} symbols from uploaded file")
-                        st.dataframe(df.head(), use_container_width=True)
-                    else:
-                        st.error("❌ CSV file must have a 'Symbol' column")
-                        symbols = []
-                except Exception as e:
-                    st.error(f"❌ Error reading file: {str(e)}")
-                    symbols = []
-            else:
-                # Try to use the uploaded default file
-                if os.path.exists('ind_niftysmallcap250list.csv'):
-                    df = pd.read_csv('ind_niftysmallcap250list.csv')
-                    symbols = df['Symbol'].tolist()
-                    st.info(f"📋 Using default Nifty SmallCap 250 list ({len(symbols)} symbols)")
-                    with st.expander("View stock list"):
-                        st.dataframe(df, use_container_width=True)
+            # Default stock list (embedded in code for Streamlit Cloud)
+            default_symbols = [
+                "360ONE", "AADHARHFC", "AARTIIND", "AAVAS", "ACE", "ABREL", "ABSLAMC", "ADANIENSOL", "ADANIREALTY", 
+                "AFFLE", "AGARIND", "AGRITECH", "AHLEAST", "AIFL", "AIREN", "AKSHOPTFBR", "ALKYLAMINE", "ALLCARGO", 
+                "ALOKINDS", "AMBER", "AMJLAND", "ANANTRAJ", "ANGELONE", "ANURAS", "APCOTEXIND", "APLAPOLLO", "APOLLOTYRE", 
+                "APTUS", "ARMANFIN", "ARVSMART", "ASAHIINDIA", "ASHOKA", "ASTERDM", "ASTRAL", "ATUL", "AVANTIFEED", 
+                "AWHCL", "AXISBANK", "BALAMINES", "BALRAMCHIN", "BANARISUG", "BANDHANBNK", "BASF", "BATAINDIA", 
+                "BAYERCROP", "BBL", "BECTORFOOD", "BEML", "BERGEPAINT", "BHARATFORG", "BHARTIHEXA", "BHEL", 
+                "BIKAJI", "BIRLACORPN", "BLUEDART", "BLUESTARCO", "BOFT", "BOMDYEING", "BPCL", "BSE", 
+                "BSOFT", "CANFINHOME", "CAMS", "CARBORUNIV", "CARERATING", "CARTRADE", "CASTROLIND", "CCL", 
+                "CEATLTD", "CENTRALBK", "CENTURYPLY", "CENTURYTEX", "CERA", "CHALET", "CHAMBLFERT", "CHENNPETRO", 
+                "CHOLAHLDNG", "CHOLAFIN", "COCHINSHIP", "COFORGE", "COLPAL", "CONFIPET", "CORDSCABLE", "COROMANDEL", 
+                "COSMOFIRST", "CRAFTSMAN", "CREDITACC", "CRISIL", "CROMPTON", "CUB", "CUMMINSIND", "CYIENT", 
+                "DALMIASUG", "DATAPATTNS", "DCBBANK", "DCMSHRIRAM", "DEEPAKFERT", "DEEPAKNTR", "DELTACORP", "DEVYANI", 
+                "DHANI", "DHANUKA", "DIVISLAB", "DIXON", "DLF", "DMART", "DRREDDY", "EICHERMOT", 
+                "EIDPARRY", "EIHOTEL", "ELECON", "ELGIEQUIP", "EMAMILTD", "ENDURANCE", "ENGINERSIN", "EQUITAS", 
+                "ERIS", "ESABINDIA", "ESCORTS", "EXIDEIND", "FACT", "FDC", "FEDERALBNK", "FEDFINA", 
+                "FELDVR", "FIEMIND", "FINPIPE", "FIVESTAR", "FORTIS", "FSL", "GALAXYSURF", "GARFIBRES", 
+                "GESHIP", "GET&D", "GICRE", "GILLETTE", "GLAND", "GLAXO", "GLENMARK", "GLOBALVECT", 
+                "GNFC", "GODFRYPHLP", "GODREJCP", "GODREJIND", "GODREJPROP", "GPPL", "GRANULES", "GRAPHITE", 
+                "GRASIM", "GREAVESCOT", "GRINDWELL", "GRSE", "GSFC", "GSPL", "GUJALKALI", "GUJGASLTD", 
+                "GULFOILLUB", "HAL", "HAPPSTMNDS", "HATHWAY", "HATSUN", "HAVELLS", "HCG", "HDFCAMC", 
+                "HDFCLIFE", "HEG", "HEROMOTOCO", "HFCL", "HIKAL", "HINDALCO", "HINDCOPPER", "HINDPETRO", 
+                "HINDUNILVR", "HLEGLAS", "HOMEFIRST", "HONASA", "HSCL", "HUDCO", "ICICIPRULI", "IDEA", 
+                "IDFC", "IDFCFIRSTB", "IEX", "IFBIND", "IIFL", "INDHOTEL", "INDIACEM", "INDIAMART", 
+                "INDIANB", "INDIGO", "INDOCO", "INDOSTAR", "INDUSINDBK", "INDUSTOWER", "INFIBEAM", "INFY", 
+                "INGERRAND", "INOXLEISUR", "INSPIRISYS", "INTELLECT", "IOB", "IOLCP", "IONEXCHANG", "IRCON", 
+                "IRFC", "ITC", "ITI", "J&KBANK", "JBCHEPHARM", "JKCEMENT", "JKLAKSHMI", "JKPAPER", 
+                "JMFINANCIL", "JSL", "JSWENERGY", "JSWINFRA", "JUBLFOOD", "JUBLPHARMA", "JUSTDIAL", "JYOTHYLAB", 
+                "KAJARIACER", "KALPATPOWR", "KALYANKJIL", "KAMATHOTEL", "KANSAINER", "KEC", "KEI", "KFINTECH", 
+                "KIMS", "KIRLOSENG", "KIRLOSIND", "KNRCON", "KOLTEPATIL", "KRBL", "KPITTECH", "KSBL", 
+                "KSB", "LAOPALA", "LATENTVIEW", "LAXMIMACH", "LCCINFOTEC", "LEMONTREE", "LEUCINE", "LGBBROSLTD", 
+                "LICI", "LICHSGFIN", "LINDEINDIA", "LLOYDSME", "LT", "LTF", "LTTS", "LUPIN", 
+                "LUXIND", "LXCHEM", "LYKALABS", "M&M", "M&MFIN", "MAHABANK", "MAHLOG", "MANAPPURAM", 
+                "MARICO", "MARUTI", "MASTEK", "MAXHEALTH", "MAZAGON", "MCDOWELL-N", "MCX", "MEDPLUS", 
+                "METROBRAND", "MFSL", "MGL", "MHRIL", "MIDHANI", "MMTC", "MOIL", "MOTHERSON", 
+                "MPHASIS", "MRF", "MSUMI", "MTARTECH", "MUTHOOTFIN", "NAM-INDIA", "NATCOPHARM", "NAUKRI", 
+                "NAVINFLUOR", "NBCC", "NCC", "NESTLEIND", "NETWEB", "NEWGEN", "NH", "NHPC", 
+                "NIACL", "NIITLTD", "NMDC", "NOCIL", "NSLNISP", "NTPC", "NUVOCO", "NYKAA", 
+                "OBEROIRLTY", "OFSS", "OIL", "ONGC", "PANATONE", "PATANJALI", "PAYTM", "PB", 
+                "PEL", "PERSISTENT", "PETRONET", "PFC", "PFIZER", "PGHH", "PHOENIXLTD", "PIDILITIND", 
+                "PIIND", "PNB", "PNBHOUSING", "PNCINFRA", "POLYCAB", "POONAWALLA", "POWERGRID", "POWERINDIA", 
+                "PPSMPL", "PRAJIND", "PRESTIGE", "PRSMJOHNSN", "PTC", "PTL", "PVRINOX", "QUESS", 
+                "RADICO", "RAILTEL", "RAJESHEXPO", "RALLIS", "RAMCOCEM", "RANEHOLDIN", "RBLBANK", "RCF", 
+                "RECLTD", "REDINGTON", "RELAXO", "RELIANCE", "RENUKA", "REPCOHOME", "RESPONIND", "RVNL", 
+                "SAFARI", "SAIL", "SANOFI", "SAPPHIRE", "SARDAEN", "SBICARD", "SBILIFE", "SCHAEFFLER", 
+                "SCHNEIDER", "SCI", "SFL", "SGBL", "SHANKARA", "SHARDACROP", "SHILPAMED", "SHOPERSTOP", 
+                "SHREECEM", "SHREYAS", "SHRIRAMFIN", "SHYAMMETL", "SIEMENS", "SIS", "SJVN", "SKFINDIA", 
+                "SRF", "STARHEALTH", "STELCO", "SUBEXLTD", "SUNTECK", "SUNTV", "SUPRAJIT", "SUPRIYA", 
+                "SURYAROSNI", "SUZLON", "SWANENERGY", "SYMPHONY", "SYNGENE", "TARSONS", "TATACOMM", "TATACONSUM", 
+                "TATAELXSI", "TATAINVEST", "TATAMOTORS", "TATAPOWER", "TATATECH", "TCS", "TECHM", "THERMAX", 
+                "THYROCARE", "TIPSINDLTD", "TITAGARH", "TITAN", "TNPETRO", "TRENT", "TRIDENT", "TRITURBINE", 
+                "TTKPRESTIG", "TV18BRDCST", "TVSHLTD", "TVSSCS", "UBL", "ULTRACEMCO", "UNOMINDA", "UPL", 
+                "UTIAMC", "UTTAMSUGAR", "VEDL", "VENKEYS", "VGUARD", "VINATIORGA", "VIPIND", "VMART", 
+                "VOLTAMP", "VOLTAS", "VTL", "WELCORP", "WESTLIFE", "WHIRLPOOL", "WIPRO", "WOCKPHARMA", 
+                "YESBANK", "ZEEL", "ZENSARTECH", "ZFCVINDIA", "ZOMATO", "ZYDUSWELL"
+            ]
+            
+            # Stock universe options
+            stock_source = st.radio(
+                "Choose your stock universe:",
+                ["📈 Default Nifty SmallCap 250", "📁 Upload Custom List", "✏️ Manual Selection"],
+                horizontal=True
+            )
+            
+            if stock_source == "📈 Default Nifty SmallCap 250":
+                symbols = default_symbols
+                st.success(f"✅ Using Nifty SmallCap 250 list ({len(symbols)} symbols)")
+                
+                # Show sample stocks
+                with st.expander(f"📋 View stock list ({len(symbols)} symbols)"):
+                    # Display in columns for better visualization
+                    cols = st.columns(5)
+                    for i, symbol in enumerate(symbols):
+                        with cols[i % 5]:
+                            st.write(f"• {symbol}")
+                
+            elif stock_source == "📁 Upload Custom List":
+                uploaded_file = st.file_uploader("Upload CSV with 'Symbol' column", type="csv")
+                
+                if uploaded_file is not None:
+                    try:
+                        df = pd.read_csv(uploaded_file)
+                        if 'Symbol' in df.columns:
+                            symbols = df['Symbol'].tolist()
+                            st.success(f"✅ Loaded {len(symbols)} symbols from uploaded file")
+                            st.dataframe(df.head(), use_container_width=True)
+                        else:
+                            st.error("❌ CSV file must have a 'Symbol' column")
+                            symbols = default_symbols[:20]  # Fallback
+                    except Exception as e:
+                        st.error(f"❌ Error reading file: {str(e)}")
+                        symbols = default_symbols[:20]  # Fallback
                 else:
-                    # Fallback sample
-                    symbols = ["RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK", 
-                              "HINDUNILVR", "ITC", "SBIN", "BHARTIARTL", "ASIANPAINT",
-                              "MARUTI", "BAJFINANCE", "HCLTECH", "KOTAKBANK", "LT",
-                              "WIPRO", "TITAN", "ULTRACEMCO", "NESTLEIND", "POWERGRID"]
-                    st.info(f"📋 Using sample stock list ({len(symbols)} symbols)")
+                    st.info("📤 Please upload a CSV file")
+                    symbols = default_symbols[:20]  # Show sample until upload
+                    
+            else:  # Manual Selection
+                st.info("✏️ Enter stock symbols separated by commas")
+                manual_symbols = st.text_area(
+                    "Stock Symbols:",
+                    value="RELIANCE, TCS, INFY, HDFCBANK, ICICIBANK",
+                    help="Enter stock symbols separated by commas"
+                )
+                
+                if manual_symbols:
+                    symbols = [s.strip().upper() for s in manual_symbols.split(",") if s.strip()]
+                    st.success(f"✅ {len(symbols)} symbols ready: {', '.join(symbols[:5])}{'...' if len(symbols) > 5 else ''}")
+                else:
+                    symbols = default_symbols[:20]
             
             # Scan button
             if symbols and st.button("🔍 Start Stock Scan", type="primary"):
