@@ -106,11 +106,12 @@ CACHE_FILE = "stock_data_cache.pkl"
 TIMEZONE = pytz.timezone('Asia/Kolkata')
 
 # GitHub Configuration - SAME REPOSITORY VERSION
+# GitHub Configuration - SAME REPOSITORY VERSION
 GITHUB_CONFIG = {
     "username": "Hspatel1312",
-    "repo_name": "Stock-scanner",  # Same as your main repository
-    "data_repo_path": "/workspaces/Stock-scanner",  # Current directory
-    "data_folder": "data"  # Subdirectory for CSV files
+    "repo_name": "Stock-scanner",
+    "data_repo_path": "/workspaces/Stock-scanner",  # This is correct
+    "data_folder": "data"
 }
 
 class GitHubIntegration:
