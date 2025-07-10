@@ -23,73 +23,274 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better UI
+# Modern CSS with contemporary design
 st.markdown("""
 <style>
-    .main-header {
-        font-size: 3rem;
-        font-weight: bold;
+    /* Import Google Fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    /* Global Styles */
+    .main-container {
+        font-family: 'Inter', sans-serif;
+    }
+    
+    /* Hide Streamlit branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* Main Header */
+    .hero-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 3rem 2rem;
+        border-radius: 20px;
         text-align: center;
-        background: linear-gradient(90deg, #1f77b4, #ff7f0e);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
         margin-bottom: 2rem;
+        box-shadow: 0 20px 40px rgba(102, 126, 234, 0.15);
+    }
+    
+    .hero-title {
+        font-size: 3.5rem;
+        font-weight: 700;
+        color: white;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .hero-subtitle {
+        font-size: 1.2rem;
+        color: rgba(255,255,255,0.9);
+        font-weight: 400;
+        margin-bottom: 0;
+    }
+    
+    /* Status Cards */
+    .status-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+        border: 1px solid rgba(0,0,0,0.04);
+        margin: 1rem 0;
+        transition: all 0.3s ease;
+    }
+    
+    .status-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 32px rgba(0,0,0,0.1);
+    }
+    
+    .status-success {
+        border-left: 4px solid #10B981;
+        background: linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%);
+    }
+    
+    .status-warning {
+        border-left: 4px solid #F59E0B;
+        background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+    }
+    
+    .status-error {
+        border-left: 4px solid #EF4444;
+        background: linear-gradient(135deg, #FEF2F2 0%, #FECACA 100%);
+    }
+    
+    .status-info {
+        border-left: 4px solid #3B82F6;
+        background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+    }
+    
+    /* Metric Cards */
+    .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin: 1rem 0;
     }
     
     .metric-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1rem;
-        border-radius: 10px;
+        padding: 1.5rem;
+        border-radius: 16px;
         color: white;
         text-align: center;
+        box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+        transition: all 0.3s ease;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 32px rgba(102, 126, 234, 0.3);
+    }
+    
+    .metric-value {
+        font-size: 2rem;
+        font-weight: 700;
         margin: 0.5rem 0;
     }
     
-    .success-box {
-        background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-        padding: 1rem;
-        border-radius: 10px;
-        color: white;
-        margin: 1rem 0;
+    .metric-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        font-weight: 500;
     }
     
-    .warning-box {
-        background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
-        padding: 1rem;
-        border-radius: 10px;
-        color: white;
-        margin: 1rem 0;
-    }
-    
-    .info-box {
-        background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
-        padding: 1rem;
-        border-radius: 10px;
-        color: white;
-        margin: 1rem 0;
-    }
-    
-    .github-box {
-        background: linear-gradient(135deg, #24292e 0%, #586069 100%);
-        padding: 1rem;
-        border-radius: 10px;
-        color: white;
-        margin: 1rem 0;
-    }
-    
+    /* Buttons */
     .stButton > button {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         border: none;
-        border-radius: 20px;
-        padding: 0.5rem 2rem;
-        font-weight: bold;
-        transition: all 0.3s;
+        border-radius: 12px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
     }
     
     .stButton > button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        background: linear-gradient(135deg, #5a6fd8 0%, #6b4190 100%);
+    }
+    
+    .stButton > button:active {
+        transform: translateY(0);
+    }
+    
+    /* Primary Button Variant */
+    .primary-btn button {
+        background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+    }
+    
+    .primary-btn button:hover {
+        background: linear-gradient(135deg, #0D9488 0%, #047857 100%) !important;
+        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4) !important;
+    }
+    
+    /* Warning Button Variant */
+    .warning-btn button {
+        background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%) !important;
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3) !important;
+    }
+    
+    /* Sidebar Styling */
+    .css-1d391kg {
+        background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    }
+    
+    /* Input Styling */
+    .stTextInput > div > div > input {
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
+        padding: 0.75rem 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .stTextInput > div > div > input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    .stSelectbox > div > div > select {
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
+    }
+    
+    /* Tables */
+    .dataframe {
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    
+    /* Progress Bar */
+    .stProgress > div > div > div {
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        border-radius: 10px;
+    }
+    
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background: transparent;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        background: white;
+        border-radius: 12px;
+        border: 2px solid #e2e8f0;
+        padding: 0.75rem 1.5rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-color: #667eea;
+    }
+    
+    /* Animation for scan results */
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .scan-results {
+        animation: slideInUp 0.6s ease-out;
+    }
+    
+    /* GitHub Integration Section */
+    .github-section {
+        background: linear-gradient(135deg, #24292e 0%, #586069 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 16px;
+        margin: 2rem 0;
+        box-shadow: 0 8px 24px rgba(36, 41, 46, 0.2);
+    }
+    
+    .github-section h3 {
+        color: white;
+        margin-bottom: 1rem;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .hero-title {
+            font-size: 2.5rem;
+        }
+        
+        .metric-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 4px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(135deg, #5a6fd8 0%, #6b4190 100%);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -103,6 +304,7 @@ FYERS_CONFIG = {
 
 # Default file paths
 CACHE_FILE = "stock_data_cache.pkl"
+GITHUB_CSV_FILENAME = "nifty_smallcap_momentum_scan.csv"  # Fixed filename
 TIMEZONE = pytz.timezone('Asia/Kolkata')
 
 # GitHub Configuration - SMART PATH DETECTION
@@ -127,9 +329,66 @@ def get_repo_path():
 GITHUB_CONFIG = {
     "username": "Hspatel1312",
     "repo_name": "Stock-scanner",
-    "data_repo_path": get_repo_path(),  # Dynamic path detection
+    "data_repo_path": get_repo_path(),
     "data_folder": "data"
 }
+
+# Nifty SmallCap 250 Stock List (from CSV)
+NIFTY_SMALLCAP_250_SYMBOLS = [
+    "360ONE", "AADHARHFC", "AARTIIND", "AAVAS", "ACE", "ABREL", "ABSLAMC", "AEGISLOG", 
+    "AFFLE", "AKUMS", "APLLTD", "ALKYLAMINE", "ALOKINDS", "ARE&M", "AMBER", "ANANDRATHI", 
+    "ANANTRAJ", "ANGELONE", "APARINDS", "APTUS", "ARMANFIN", "ASAHIINDIA", "ASHOKA", "ASTERDM", 
+    "ASTRAL", "ATUL", "AVANTIFEED", "AWHCL", "BALAMINES", "BALRAMCHIN", "BANARISUG", "BASF", 
+    "BATAINDIA", "BAYERCROP", "BBL", "BECTORFOOD", "BEML", "BERGEPAINT", "BHARATFORG", "BHARTIHEXA", 
+    "BHEL", "BIKAJI", "BIRLACORPN", "BLUEDART", "BLUESTARCO", "BOFT", "BOMDYEING", "BSE", 
+    "BSOFT", "CANFINHOME", "CAMS", "CARBORUNIV", "CARERATING", "CARTRADE", "CASTROLIND", "CCL", 
+    "CEATLTD", "CENTRALBK", "CENTURYPLY", "CENTURYTEX", "CERA", "CHALET", "CHAMBLFERT", "CHENNPETRO", 
+    "CHOLAHLDNG", "CHOLAFIN", "COCHINSHIP", "COFORGE", "COLPAL", "CONFIPET", "CORDSCABLE", "COROMANDEL", 
+    "COSMOFIRST", "CRAFTSMAN", "CREDITACC", "CRISIL", "CROMPTON", "CUB", "CUMMINSIND", "CYIENT", 
+    "DALMIASUG", "DATAPATTNS", "DCBBANK", "DCMSHRIRAM", "DEEPAKFERT", "DEEPAKNTR", "DELTACORP", "DEVYANI", 
+    "DHANI", "DHANUKA", "DIVISLAB", "DIXON", "DLF", "DMART", "DRREDDY", "EICHERMOT", 
+    "EIDPARRY", "EIHOTEL", "ELECON", "ELGIEQUIP", "EMAMILTD", "ENDURANCE", "ENGINERSIN", "EQUITAS", 
+    "ERIS", "ESABINDIA", "ESCORTS", "EXIDEIND", "FACT", "FDC", "FEDERALBNK", "FEDFINA", 
+    "FELDVR", "FIEMIND", "FINPIPE", "FIVESTAR", "FORTIS", "FSL", "GALAXYSURF", "GARFIBRES", 
+    "GESHIP", "GET&D", "GICRE", "GILLETTE", "GLAND", "GLAXO", "GLENMARK", "GLOBALVECT", 
+    "GNFC", "GODFRYPHLP", "GODREJCP", "GODREJIND", "GODREJPROP", "GPPL", "GRANULES", "GRAPHITE", 
+    "GRASIM", "GREAVESCOT", "GRINDWELL", "GRSE", "GSFC", "GSPL", "GUJALKALI", "GUJGASLTD", 
+    "GULFOILLUB", "HAL", "HAPPSTMNDS", "HATHWAY", "HATSUN", "HAVELLS", "HCG", "HDFCAMC", 
+    "HDFCLIFE", "HEG", "HEROMOTOCO", "HFCL", "HIKAL", "HINDALCO", "HINDCOPPER", "HINDPETRO", 
+    "HINDUNILVR", "HLEGLAS", "HOMEFIRST", "HONASA", "HSCL", "HUDCO", "ICICIPRULI", "IDEA", 
+    "IDFC", "IDFCFIRSTB", "IEX", "IFBIND", "IIFL", "INDHOTEL", "INDIACEM", "INDIAMART", 
+    "INDIANB", "INDIGO", "INDOCO", "INDOSTAR", "INDUSINDBK", "INDUSTOWER", "INFIBEAM", "INFY", 
+    "INGERRAND", "INOXLEISUR", "INSPIRISYS", "INTELLECT", "IOB", "IOLCP", "IONEXCHANG", "IRCON", 
+    "IRFC", "ITC", "ITI", "J&KBANK", "JBCHEPHARM", "JKCEMENT", "JKLAKSHMI", "JKPAPER", 
+    "JMFINANCIL", "JSL", "JSWENERGY", "JSWINFRA", "JUBLFOOD", "JUBLPHARMA", "JUSTDIAL", "JYOTHYLAB", 
+    "KAJARIACER", "KALPATPOWR", "KALYANKJIL", "KAMATHOTEL", "KANSAINER", "KEC", "KEI", "KFINTECH", 
+    "KIMS", "KIRLOSENG", "KIRLOSIND", "KNRCON", "KOLTEPATIL", "KRBL", "KPITTECH", "KSBL", 
+    "KSB", "LAOPALA", "LATENTVIEW", "LAXMIMACH", "LCCINFOTEC", "LEMONTREE", "LEUCINE", "LGBBROSLTD", 
+    "LICI", "LICHSGFIN", "LINDEINDIA", "LLOYDSME", "LT", "LTF", "LTTS", "LUPIN", 
+    "LUXIND", "LXCHEM", "LYKALABS", "M&M", "M&MFIN", "MAHABANK", "MAHLOG", "MANAPPURAM", 
+    "MARICO", "MARUTI", "MASTEK", "MAXHEALTH", "MAZAGON", "MCDOWELL-N", "MCX", "MEDPLUS", 
+    "METROBRAND", "MFSL", "MGL", "MHRIL", "MIDHANI", "MMTC", "MOIL", "MOTHERSON", 
+    "MPHASIS", "MRF", "MSUMI", "MTARTECH", "MUTHOOTFIN", "NAM-INDIA", "NATCOPHARM", "NAUKRI", 
+    "NAVINFLUOR", "NBCC", "NCC", "NESTLEIND", "NETWEB", "NEWGEN", "NH", "NHPC", 
+    "NIACL", "NIITLTD", "NMDC", "NOCIL", "NSLNISP", "NTPC", "NUVOCO", "NYKAA", 
+    "OBEROIRLTY", "OFSS", "OIL", "ONGC", "PANATONE", "PATANJALI", "PAYTM", "PB", 
+    "PEL", "PERSISTENT", "PETRONET", "PFC", "PFIZER", "PGHH", "PHOENIXLTD", "PIDILITIND", 
+    "PIIND", "PNB", "PNBHOUSING", "PNCINFRA", "POLYCAB", "POONAWALLA", "POWERGRID", "POWERINDIA", 
+    "PPSMPL", "PRAJIND", "PRESTIGE", "PRSMJOHNSN", "PTC", "PTL", "PVRINOX", "QUESS", 
+    "RADICO", "RAILTEL", "RAJESHEXPO", "RALLIS", "RAMCOCEM", "RANEHOLDIN", "RBLBANK", "RCF", 
+    "RECLTD", "REDINGTON", "RELAXO", "RELIANCE", "RENUKA", "REPCOHOME", "RESPONIND", "RVNL", 
+    "SAFARI", "SAIL", "SANOFI", "SAPPHIRE", "SARDAEN", "SBICARD", "SBILIFE", "SCHAEFFLER", 
+    "SCHNEIDER", "SCI", "SFL", "SGBL", "SHANKARA", "SHARDACROP", "SHILPAMED", "SHOPERSTOP", 
+    "SHREECEM", "SHREYAS", "SHRIRAMFIN", "SHYAMMETL", "SIEMENS", "SIS", "SJVN", "SKFINDIA", 
+    "SRF", "STARHEALTH", "STELCO", "SUBEXLTD", "SUNTECK", "SUNTV", "SUPRAJIT", "SUPRIYA", 
+    "SURYAROSNI", "SUZLON", "SWANENERGY", "SYMPHONY", "SYNGENE", "TARSONS", "TATACOMM", "TATACONSUM", 
+    "TATAELXSI", "TATAINVEST", "TATAMOTORS", "TATAPOWER", "TATATECH", "TCS", "TECHM", "THERMAX", 
+    "THYROCARE", "TIPSINDLTD", "TITAGARH", "TITAN", "TNPETRO", "TRENT", "TRIDENT", "TRITURBINE", 
+    "TTKPRESTIG", "TV18BRDCST", "TVSHLTD", "TVSSCS", "UBL", "ULTRACEMCO", "UNOMINDA", "UPL", 
+    "UTIAMC", "UTTAMSUGAR", "VEDL", "VENKEYS", "VGUARD", "VINATIORGA", "VIPIND", "VMART", 
+    "VOLTAMP", "VOLTAS", "VTL", "WELCORP", "WESTLIFE", "WHIRLPOOL", "WIPRO", "WOCKPHARMA", 
+    "YESBANK", "ZEEL", "ZENSARTECH", "ZFCVINDIA", "ZOMATO", "ZYDUSWELL"
+]
 
 class GitHubIntegration:
     def __init__(self, repo_path=None):
@@ -151,14 +410,13 @@ class GitHubIntegration:
         # Create .gitignore for data folder if needed
         gitignore_path = self.repo_path / ".gitignore"
         gitignore_content = """
-# Data files (uncomment if you want to ignore large data files)
-# data/*.csv
-# data/*.pkl
-
 # Cache files
 *.pkl
 __pycache__/
 .streamlit/
+
+# Data files (optional - uncomment to ignore)
+# data/*.csv
 """
         
         if not gitignore_path.exists():
@@ -167,36 +425,35 @@ __pycache__/
         
         return True
     
-    def push_csv_to_github(self, df, filename, commit_message=None):
-        """Push CSV file to the same repository in data folder with better error handling"""
+    def push_csv_to_github(self, df, commit_message=None):
+        """Push CSV file to GitHub - Always replaces the same file"""
         try:
             if not self.ensure_repo_exists():
                 return False, "Repository not found or data folder creation failed."
             
-            # Save CSV to the data folder (this will overwrite existing files)
-            csv_path = self.data_folder / filename
+            # Always use the same filename - this will replace existing file
+            csv_path = self.data_folder / GITHUB_CSV_FILENAME
             df.to_csv(csv_path, index=False)
             
             # Create metadata file
             metadata = {
-                "filename": filename,
+                "filename": GITHUB_CSV_FILENAME,
                 "timestamp": datetime.now().isoformat(),
                 "rows": len(df),
                 "columns": list(df.columns),
                 "scan_date": datetime.now().strftime("%Y-%m-%d"),
                 "generated_by": "Fyers Stock Scanner Pro",
                 "file_size_kb": round(csv_path.stat().st_size / 1024, 2),
-                "replaced_existing": csv_path.exists()
+                "is_replacement": csv_path.exists()
             }
             
-            metadata_path = self.data_folder / f"{filename.replace('.csv', '_metadata.json')}"
+            metadata_path = self.data_folder / f"{GITHUB_CSV_FILENAME.replace('.csv', '_metadata.json')}"
             with open(metadata_path, 'w') as f:
                 json.dump(metadata, f, indent=2)
             
-            # Git operations with better error handling
+            # Git operations
             if commit_message is None:
-                action = "Replace" if csv_path.exists() else "Add"
-                commit_message = f"{action} {filename} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                commit_message = f"Update momentum scan results - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
             
             # Change to repo directory and commit
             original_cwd = Path.cwd()
@@ -209,33 +466,33 @@ __pycache__/
                 if result.returncode != 0:
                     return False, f"Not a git repository: {result.stderr}"
                 
-                # Configure git user if not set (for Streamlit Cloud)
+                # Configure git user if not set
                 subprocess.run(["git", "config", "user.email", "streamlit-app@example.com"], 
                              capture_output=True, timeout=10)
                 subprocess.run(["git", "config", "user.name", "Streamlit App"], 
                              capture_output=True, timeout=10)
                 
-                # Git operations - add files from data folder
-                add_result = subprocess.run(["git", "add", f"data/{filename}"], 
-                                          check=True, capture_output=True, timeout=30)
-                subprocess.run(["git", "add", f"data/{filename.replace('.csv', '_metadata.json')}"], 
-                             check=True, capture_output=True, timeout=30)
+                # Git operations - add the fixed filename
+                subprocess.run(["git", "add", f"data/{GITHUB_CSV_FILENAME}"], 
+                              check=True, capture_output=True, timeout=30)
+                subprocess.run(["git", "add", f"data/{GITHUB_CSV_FILENAME.replace('.csv', '_metadata.json')}"], 
+                              check=True, capture_output=True, timeout=30)
                 
                 # Check if there are changes to commit
                 diff_result = subprocess.run(["git", "diff", "--cached", "--quiet"], 
                                            capture_output=True, timeout=30)
                 if diff_result.returncode == 0:
-                    return True, f"File {filename} already up to date (no changes to commit)"
+                    return True, f"File {GITHUB_CSV_FILENAME} is already up to date (no changes to commit)"
                 
                 # Commit changes
-                commit_result = subprocess.run(["git", "commit", "-m", commit_message], 
-                                             check=True, capture_output=True, timeout=30)
+                subprocess.run(["git", "commit", "-m", commit_message], 
+                              check=True, capture_output=True, timeout=30)
                 
                 # Push changes
-                push_result = subprocess.run(["git", "push"], 
-                                           check=True, capture_output=True, timeout=60)
+                subprocess.run(["git", "push"], 
+                              check=True, capture_output=True, timeout=60)
                 
-                return True, f"Successfully {'replaced' if metadata.get('replaced_existing') else 'added'} {filename} on GitHub"
+                return True, f"Successfully updated {GITHUB_CSV_FILENAME} on GitHub"
             
             except subprocess.TimeoutExpired:
                 return False, "Git operation timed out. Please try again."
@@ -246,7 +503,6 @@ __pycache__/
                     stderr_msg = e.stderr.decode() if isinstance(e.stderr, bytes) else str(e.stderr)
                     error_msg += f" - {stderr_msg}"
                 
-                # Check for common issues
                 if "permission denied" in error_msg.lower():
                     return False, "Permission denied. GitHub authentication may be required."
                 elif "not found" in error_msg.lower():
@@ -260,12 +516,12 @@ __pycache__/
         except Exception as e:
             return False, f"Unexpected error: {str(e)}"
     
-    def get_csv_url(self, filename, raw=True):
-        """Get direct URL to CSV file in data folder"""
+    def get_csv_url(self, raw=True):
+        """Get direct URL to the fixed CSV file"""
         if raw:
-            return f"https://raw.githubusercontent.com/{self.username}/{self.repo_name}/main/data/{filename}"
+            return f"https://raw.githubusercontent.com/{self.username}/{self.repo_name}/main/data/{GITHUB_CSV_FILENAME}"
         else:
-            return f"https://github.com/{self.username}/{self.repo_name}/blob/main/data/{filename}"
+            return f"https://github.com/{self.username}/{self.repo_name}/blob/main/data/{GITHUB_CSV_FILENAME}"
     
     def get_repo_status(self):
         """Get repository status information"""
@@ -293,15 +549,15 @@ __pycache__/
                 else:
                     last_commit = None
                 
-                # Count data files
-                data_files = list(self.data_folder.glob("*.csv"))
+                # Check if our main file exists
+                csv_exists = (self.data_folder / GITHUB_CSV_FILENAME).exists()
                 
                 return {
                     "status": "ok",
                     "has_changes": has_changes,
                     "last_commit": last_commit,
                     "repo_url": f"https://github.com/{self.username}/{self.repo_name}",
-                    "data_files_count": len(data_files),
+                    "csv_exists": csv_exists,
                     "data_folder": str(self.data_folder)
                 }
             
@@ -321,9 +577,9 @@ class EnhancedStockScanner:
         self.holidays = self.load_holidays()
         
     def load_holidays(self) -> set:
-        """Load holidays from embedded data or uploaded file"""
+        """Load holidays from embedded data"""
         try:
-            # Default holidays for 2025 (embedded in code)
+            # Default holidays for 2025
             default_holidays = [
                 "2025-02-26",  # Mahashivratri
                 "2025-03-14",  # Holi
@@ -341,24 +597,10 @@ class EnhancedStockScanner:
                 "2025-12-25"   # Christmas
             ]
             
-            # Try to read uploaded holidays file first
-            if os.path.exists('holidays_2025.csv'):
-                holidays_df = pd.read_csv('holidays_2025.csv')
-                holidays = set(pd.to_datetime(holidays_df['Date'], format='%d-%b-%Y').dt.date)
-                return holidays
-            else:
-                # Use embedded default holidays
-                return set(pd.to_datetime(default_holidays).date)
-        except Exception as e:
-            st.warning(f"Using default holidays due to error: {str(e)}")
-            # Fallback to embedded holidays
-            default_holidays = [
-                "2025-02-26", "2025-03-14", "2025-03-31", "2025-04-10",
-                "2025-04-14", "2025-04-18", "2025-05-01", "2025-08-15",
-                "2025-08-27", "2025-10-02", "2025-10-21", "2025-10-22",
-                "2025-11-05", "2025-12-25"
-            ]
             return set(pd.to_datetime(default_holidays).date)
+        except Exception as e:
+            st.warning(f"Using minimal holidays due to error: {str(e)}")
+            return set()
     
     def get_trading_days(self, start_date: datetime, end_date: datetime) -> List[datetime]:
         """Generate trading days between start and end date"""
@@ -701,49 +943,32 @@ def create_performance_charts(results_df):
     fig.update_layout(height=800, showlegend=False, title_text="📊 Stock Analysis Dashboard")
     return fig
 
-def display_github_status():
-    """Display GitHub repository status"""
-    if 'github_integration' not in st.session_state:
-        st.session_state.github_integration = GitHubIntegration()
-    
-    status = st.session_state.github_integration.get_repo_status()
-    
-    if status["status"] == "ok":
-        st.markdown('<div class="github-box">✅ GitHub Repository Connected</div>', unsafe_allow_html=True)
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            if status["last_commit"]:
-                st.markdown(f"""
-                **Last Commit:** {status['last_commit']['hash']}  
-                **Message:** {status['last_commit']['message']}  
-                **Date:** {status['last_commit']['date']}
-                """)
-        
-        with col2:
-            if status["has_changes"]:
-                st.warning("📝 Repository has uncommitted changes")
-            else:
-                st.success("✅ Repository is clean")
-        
-        if st.button("🔗 View Repository"):
-            st.markdown(f"[Open Repository]({status['repo_url']})")
-    
-    elif status["status"] == "not_found":
-        st.markdown('<div class="warning-box">⚠️ GitHub repository not found</div>', unsafe_allow_html=True)
-        st.info("Please set up your data repository first using the setup guide.")
-    
-    else:
-        st.markdown(f'<div class="warning-box">❌ Repository Error: {status["message"]}</div>', unsafe_allow_html=True)
+def display_status_card(status_type, title, message, icon=""):
+    """Display a modern status card"""
+    card_class = f"status-card status-{status_type}"
+    st.markdown(f"""
+    <div class="{card_class}">
+        <h4>{icon} {title}</h4>
+        <p>{message}</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 def main():
-    # Header
-    st.markdown('<h1 class="main-header">🚀 Fyers Stock Scanner Pro</h1>', unsafe_allow_html=True)
-    st.markdown("### Advanced momentum-based stock screening with rebalance date intelligence")
+    # Modern Hero Header
+    st.markdown("""
+    <div class="hero-header">
+        <h1 class="hero-title">🚀 Fyers Stock Scanner Pro</h1>
+        <p class="hero-subtitle">Advanced momentum-based stock screening with intelligent rebalancing</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Initialize scanner
     if 'scanner' not in st.session_state:
         st.session_state.scanner = EnhancedStockScanner()
+    
+    # Initialize GitHub integration
+    if 'github_integration' not in st.session_state:
+        st.session_state.github_integration = GitHubIntegration()
     
     # Sidebar
     with st.sidebar:
@@ -752,17 +977,23 @@ def main():
         # Authentication section
         st.subheader("🔐 Fyers Authentication")
         auth_url = f"https://api-t1.fyers.in/api/v3/generate-authcode?client_id={FYERS_CONFIG['client_id']}&redirect_uri={FYERS_CONFIG['redirect_uri']}&response_type=code&state=None"
-        st.markdown(f"**Step 1:** [🔗 Get Authorization Code]({auth_url})")
+        
+        st.markdown(f"""
+        **Step 1:** [🔗 Get Authorization Code]({auth_url})
+        
+        **Step 2:** Enter the code below:
+        """)
         
         auth_code = st.text_input(
-            "**Step 2:** Enter Authorization Code:",
+            "Authorization Code:",
             type="password",
-            help="Paste the authorization code from Fyers"
+            help="Paste the authorization code from Fyers",
+            placeholder="Enter your auth code here..."
         )
         
-        if st.button("🔑 Authenticate", type="primary"):
+        if st.button("🔑 Authenticate", type="primary", use_container_width=True):
             if auth_code:
-                with st.spinner("Authenticating..."):
+                with st.spinner("🔄 Authenticating with Fyers..."):
                     if st.session_state.scanner.authenticate_fyers(auth_code):
                         st.success("✅ Authentication successful!")
                         st.session_state.authenticated = True
@@ -770,373 +1001,335 @@ def main():
                         st.error("❌ Authentication failed!")
                         st.session_state.authenticated = False
             else:
-                st.warning("Please enter authorization code")
+                st.warning("⚠️ Please enter authorization code")
         
-        # GitHub Configuration
-        st.subheader("📂 GitHub Configuration")
-        github_username = st.text_input(
-            "GitHub Username:",
-            value=GITHUB_CONFIG["username"],
-            help="Your GitHub username for the data repository"
-        )
+        # Show authentication status
+        if hasattr(st.session_state, 'authenticated'):
+            if st.session_state.authenticated:
+                display_status_card("success", "Authentication", "Successfully connected to Fyers API", "✅")
+            else:
+                display_status_card("error", "Authentication", "Please authenticate with Fyers", "❌")
         
-        if github_username != GITHUB_CONFIG["username"]:
-            GITHUB_CONFIG["username"] = github_username
-            if 'github_integration' in st.session_state:
-                st.session_state.github_integration.username = github_username
-        
-        # Display GitHub status
-        display_github_status()
+        st.divider()
         
         # Scanner parameters
-        st.subheader("📊 Scanner Parameters")
-        strategy = st.selectbox("Strategy:", ["volatility", "fitp", "momentum"], help="Momentum scoring strategy")
-        num_stocks = st.slider("Number of stocks:", 5, 50, 20)
-        lookback_period = st.slider("Lookback period (months):", 3, 24, 12)
-        last_month_exclusion = st.slider("Last month exclusion:", 0, 3, 0)
+        st.subheader("📊 Scanner Configuration")
         
-        # Store in session state for charts
-        st.session_state.strategy = strategy
-        st.session_state.num_stocks = num_stocks
-        st.session_state.lookback_period = lookback_period
+        strategy = st.selectbox(
+            "🎯 Strategy:",
+            ["volatility", "fitp", "momentum"],
+            help="Choose the momentum scoring strategy"
+        )
+        
+        num_stocks = st.slider(
+            "📈 Number of stocks:",
+            min_value=5,
+            max_value=50,
+            value=20,
+            help="Number of top stocks to return"
+        )
+        
+        lookback_period = st.slider(
+            "📅 Lookback period (months):",
+            min_value=3,
+            max_value=24,
+            value=12,
+            help="How many months to look back for momentum calculation"
+        )
+        
+        last_month_exclusion = st.slider(
+            "🚫 Last month exclusion:",
+            min_value=0,
+            max_value=3,
+            value=0,
+            help="Exclude last N months to avoid recency bias"
+        )
+        
+        # GitHub status
+        st.divider()
+        st.subheader("📂 GitHub Integration")
+        
+        status = st.session_state.github_integration.get_repo_status()
+        if status["status"] == "ok":
+            display_status_card("success", "Repository", f"Connected to {GITHUB_CONFIG['username']}/{GITHUB_CONFIG['repo_name']}", "✅")
+            if status["csv_exists"]:
+                csv_url = st.session_state.github_integration.get_csv_url(raw=True)
+                st.markdown(f"""
+                **📁 Current file:** `{GITHUB_CSV_FILENAME}`  
+                **🔗 Direct URL:** [Access CSV]({csv_url})
+                """)
+        else:
+            display_status_card("warning", "Repository", status.get("message", "Repository not configured"), "⚠️")
     
     # Main content tabs
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 Scanner", "📅 Rebalance Calendar", "📊 Analytics", "🔗 GitHub", "ℹ️ About"])
+    tab1, tab2, tab3, tab4 = st.tabs(["🔍 Scanner", "📅 Calendar", "📊 Analytics", "ℹ️ About"])
     
     with tab1:
         if not hasattr(st.session_state, 'authenticated') or not st.session_state.authenticated:
-            st.markdown('<div class="info-box">👆 Please authenticate with Fyers using the sidebar first</div>', unsafe_allow_html=True)
+            display_status_card("info", "Getting Started", "Please authenticate with Fyers using the sidebar to begin scanning stocks", "👈")
             
-            # Show sample data format
-            st.subheader("📋 Sample Data Format")
-            sample_df = pd.DataFrame({
-                "Symbol": ["RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK"],
-                "Company Name": ["Reliance Industries", "Tata Consultancy Services", "Infosys", "HDFC Bank", "ICICI Bank"],
-                "Industry": ["Oil & Gas", "IT Services", "IT Services", "Banking", "Banking"]
-            })
-            st.dataframe(sample_df, use_container_width=True)
+            # Show preview of what's available
+            st.subheader("📋 Nifty SmallCap 250 Stock Universe")
+            st.info(f"✨ This scanner uses the official Nifty SmallCap 250 list with {len(NIFTY_SMALLCAP_250_SYMBOLS)} stocks")
             
+            # Display sample stocks in a nice grid
+            col1, col2, col3, col4, col5 = st.columns(5)
+            sample_stocks = NIFTY_SMALLCAP_250_SYMBOLS[:25]  # Show first 25
+            
+            for i, symbol in enumerate(sample_stocks):
+                with [col1, col2, col3, col4, col5][i % 5]:
+                    st.code(symbol)
+            
+            if len(NIFTY_SMALLCAP_250_SYMBOLS) > 25:
+                st.caption(f"... and {len(NIFTY_SMALLCAP_250_SYMBOLS) - 25} more stocks")
+                
         else:
             # Rebalance date selection
             st.subheader("📅 Select Rebalance Date")
             rebalance_dates = st.session_state.scanner.get_next_rebalance_dates(6)
             
-            col1, col2 = st.columns(2)
+            col1, col2 = st.columns([2, 1])
+            
             with col1:
                 selected_rebalance = st.selectbox(
-                    "Choose rebalance date:",
+                    "Choose your next rebalance date:",
                     options=range(len(rebalance_dates)),
-                    format_func=lambda x: f"{rebalance_dates[x]['rebalance_date'].strftime('%Y-%m-%d')} ({rebalance_dates[x]['type']})"
+                    format_func=lambda x: f"{rebalance_dates[x]['rebalance_date'].strftime('%Y-%m-%d')} ({rebalance_dates[x]['type']})",
+                    help="Select when you plan to rebalance your portfolio"
                 )
             
             with col2:
                 if selected_rebalance is not None:
                     selected_date_info = rebalance_dates[selected_rebalance]
+                    cutoff_date = selected_date_info['data_cutoff_date']
+                    
                     st.markdown(f"""
                     <div class="metric-card">
-                        <h4>📊 Data Cutoff Date</h4>
-                        <h3>{selected_date_info['data_cutoff_date'].strftime('%Y-%m-%d')}</h3>
-                        <p>Data will be fetched until this date</p>
+                        <div class="metric-label">📊 Data Cutoff Date</div>
+                        <div class="metric-value">{cutoff_date.strftime('%Y-%m-%d')}</div>
                     </div>
                     """, unsafe_allow_html=True)
             
-            # Stock universe selection
-            st.subheader("📁 Stock Universe")
+            st.divider()
             
-            # Default stock list (embedded in code for Streamlit Cloud)
-            default_symbols = [
-                "360ONE", "AADHARHFC", "AARTIIND", "AAVAS", "ACE", "ABREL", "ABSLAMC", "ADANIENSOL", "ADANIREALTY", 
-                "AFFLE", "AGARIND", "AGRITECH", "AHLEAST", "AIFL", "AIREN", "AKSHOPTFBR", "ALKYLAMINE", "ALLCARGO", 
-                "ALOKINDS", "AMBER", "AMJLAND", "ANANTRAJ", "ANGELONE", "ANURAS", "APCOTEXIND", "APLAPOLLO", "APOLLOTYRE", 
-                "APTUS", "ARMANFIN", "ARVSMART", "ASAHIINDIA", "ASHOKA", "ASTERDM", "ASTRAL", "ATUL", "AVANTIFEED", 
-                "AWHCL", "AXISBANK", "BALAMINES", "BALRAMCHIN", "BANARISUG", "BANDHANBNK", "BASF", "BATAINDIA", 
-                "BAYERCROP", "BBL", "BECTORFOOD", "BEML", "BERGEPAINT", "BHARATFORG", "BHARTIHEXA", "BHEL", 
-                "BIKAJI", "BIRLACORPN", "BLUEDART", "BLUESTARCO", "BOFT", "BOMDYEING", "BPCL", "BSE", 
-                "BSOFT", "CANFINHOME", "CAMS", "CARBORUNIV", "CARERATING", "CARTRADE", "CASTROLIND", "CCL", 
-                "CEATLTD", "CENTRALBK", "CENTURYPLY", "CENTURYTEX", "CERA", "CHALET", "CHAMBLFERT", "CHENNPETRO", 
-                "CHOLAHLDNG", "CHOLAFIN", "COCHINSHIP", "COFORGE", "COLPAL", "CONFIPET", "CORDSCABLE", "COROMANDEL", 
-                "COSMOFIRST", "CRAFTSMAN", "CREDITACC", "CRISIL", "CROMPTON", "CUB", "CUMMINSIND", "CYIENT", 
-                "DALMIASUG", "DATAPATTNS", "DCBBANK", "DCMSHRIRAM", "DEEPAKFERT", "DEEPAKNTR", "DELTACORP", "DEVYANI", 
-                "DHANI", "DHANUKA", "DIVISLAB", "DIXON", "DLF", "DMART", "DRREDDY", "EICHERMOT", 
-                "EIDPARRY", "EIHOTEL", "ELECON", "ELGIEQUIP", "EMAMILTD", "ENDURANCE", "ENGINERSIN", "EQUITAS", 
-                "ERIS", "ESABINDIA", "ESCORTS", "EXIDEIND", "FACT", "FDC", "FEDERALBNK", "FEDFINA", 
-                "FELDVR", "FIEMIND", "FINPIPE", "FIVESTAR", "FORTIS", "FSL", "GALAXYSURF", "GARFIBRES", 
-                "GESHIP", "GET&D", "GICRE", "GILLETTE", "GLAND", "GLAXO", "GLENMARK", "GLOBALVECT", 
-                "GNFC", "GODFRYPHLP", "GODREJCP", "GODREJIND", "GODREJPROP", "GPPL", "GRANULES", "GRAPHITE", 
-                "GRASIM", "GREAVESCOT", "GRINDWELL", "GRSE", "GSFC", "GSPL", "GUJALKALI", "GUJGASLTD", 
-                "GULFOILLUB", "HAL", "HAPPSTMNDS", "HATHWAY", "HATSUN", "HAVELLS", "HCG", "HDFCAMC", 
-                "HDFCLIFE", "HEG", "HEROMOTOCO", "HFCL", "HIKAL", "HINDALCO", "HINDCOPPER", "HINDPETRO", 
-                "HINDUNILVR", "HLEGLAS", "HOMEFIRST", "HONASA", "HSCL", "HUDCO", "ICICIPRULI", "IDEA", 
-                "IDFC", "IDFCFIRSTB", "IEX", "IFBIND", "IIFL", "INDHOTEL", "INDIACEM", "INDIAMART", 
-                "INDIANB", "INDIGO", "INDOCO", "INDOSTAR", "INDUSINDBK", "INDUSTOWER", "INFIBEAM", "INFY", 
-                "INGERRAND", "INOXLEISUR", "INSPIRISYS", "INTELLECT", "IOB", "IOLCP", "IONEXCHANG", "IRCON", 
-                "IRFC", "ITC", "ITI", "J&KBANK", "JBCHEPHARM", "JKCEMENT", "JKLAKSHMI", "JKPAPER", 
-                "JMFINANCIL", "JSL", "JSWENERGY", "JSWINFRA", "JUBLFOOD", "JUBLPHARMA", "JUSTDIAL", "JYOTHYLAB", 
-                "KAJARIACER", "KALPATPOWR", "KALYANKJIL", "KAMATHOTEL", "KANSAINER", "KEC", "KEI", "KFINTECH", 
-                "KIMS", "KIRLOSENG", "KIRLOSIND", "KNRCON", "KOLTEPATIL", "KRBL", "KPITTECH", "KSBL", 
-                "KSB", "LAOPALA", "LATENTVIEW", "LAXMIMACH", "LCCINFOTEC", "LEMONTREE", "LEUCINE", "LGBBROSLTD", 
-                "LICI", "LICHSGFIN", "LINDEINDIA", "LLOYDSME", "LT", "LTF", "LTTS", "LUPIN", 
-                "LUXIND", "LXCHEM", "LYKALABS", "M&M", "M&MFIN", "MAHABANK", "MAHLOG", "MANAPPURAM", 
-                "MARICO", "MARUTI", "MASTEK", "MAXHEALTH", "MAZAGON", "MCDOWELL-N", "MCX", "MEDPLUS", 
-                "METROBRAND", "MFSL", "MGL", "MHRIL", "MIDHANI", "MMTC", "MOIL", "MOTHERSON", 
-                "MPHASIS", "MRF", "MSUMI", "MTARTECH", "MUTHOOTFIN", "NAM-INDIA", "NATCOPHARM", "NAUKRI", 
-                "NAVINFLUOR", "NBCC", "NCC", "NESTLEIND", "NETWEB", "NEWGEN", "NH", "NHPC", 
-                "NIACL", "NIITLTD", "NMDC", "NOCIL", "NSLNISP", "NTPC", "NUVOCO", "NYKAA", 
-                "OBEROIRLTY", "OFSS", "OIL", "ONGC", "PANATONE", "PATANJALI", "PAYTM", "PB", 
-                "PEL", "PERSISTENT", "PETRONET", "PFC", "PFIZER", "PGHH", "PHOENIXLTD", "PIDILITIND", 
-                "PIIND", "PNB", "PNBHOUSING", "PNCINFRA", "POLYCAB", "POONAWALLA", "POWERGRID", "POWERINDIA", 
-                "PPSMPL", "PRAJIND", "PRESTIGE", "PRSMJOHNSN", "PTC", "PTL", "PVRINOX", "QUESS", 
-                "RADICO", "RAILTEL", "RAJESHEXPO", "RALLIS", "RAMCOCEM", "RANEHOLDIN", "RBLBANK", "RCF", 
-                "RECLTD", "REDINGTON", "RELAXO", "RELIANCE", "RENUKA", "REPCOHOME", "RESPONIND", "RVNL", 
-                "SAFARI", "SAIL", "SANOFI", "SAPPHIRE", "SARDAEN", "SBICARD", "SBILIFE", "SCHAEFFLER", 
-                "SCHNEIDER", "SCI", "SFL", "SGBL", "SHANKARA", "SHARDACROP", "SHILPAMED", "SHOPERSTOP", 
-                "SHREECEM", "SHREYAS", "SHRIRAMFIN", "SHYAMMETL", "SIEMENS", "SIS", "SJVN", "SKFINDIA", 
-                "SRF", "STARHEALTH", "STELCO", "SUBEXLTD", "SUNTECK", "SUNTV", "SUPRAJIT", "SUPRIYA", 
-                "SURYAROSNI", "SUZLON", "SWANENERGY", "SYMPHONY", "SYNGENE", "TARSONS", "TATACOMM", "TATACONSUM", 
-                "TATAELXSI", "TATAINVEST", "TATAMOTORS", "TATAPOWER", "TATATECH", "TCS", "TECHM", "THERMAX", 
-                "THYROCARE", "TIPSINDLTD", "TITAGARH", "TITAN", "TNPETRO", "TRENT", "TRIDENT", "TRITURBINE", 
-                "TTKPRESTIG", "TV18BRDCST", "TVSHLTD", "TVSSCS", "UBL", "ULTRACEMCO", "UNOMINDA", "UPL", 
-                "UTIAMC", "UTTAMSUGAR", "VEDL", "VENKEYS", "VGUARD", "VINATIORGA", "VIPIND", "VMART", 
-                "VOLTAMP", "VOLTAS", "VTL", "WELCORP", "WESTLIFE", "WHIRLPOOL", "WIPRO", "WOCKPHARMA", 
-                "YESBANK", "ZEEL", "ZENSARTECH", "ZFCVINDIA", "ZOMATO", "ZYDUSWELL"
-            ]
+            # Scan section
+            st.subheader("🚀 Start Your Momentum Scan")
             
-            # Stock universe options
-            stock_source = st.radio(
-                "Choose your stock universe:",
-                ["📈 Default Nifty SmallCap 250", "📁 Upload Custom List", "✏️ Manual Selection"],
-                horizontal=True
-            )
+            col1, col2 = st.columns([3, 1])
             
-            if stock_source == "📈 Default Nifty SmallCap 250":
-                symbols = default_symbols
-                st.success(f"✅ Using Nifty SmallCap 250 list ({len(symbols)} symbols)")
-                
-                # Show sample stocks
-                with st.expander(f"📋 View stock list ({len(symbols)} symbols)"):
-                    # Display in columns for better visualization
-                    cols = st.columns(5)
-                    for i, symbol in enumerate(symbols):
-                        with cols[i % 5]:
-                            st.write(f"• {symbol}")
-                
-            elif stock_source == "📁 Upload Custom List":
-                uploaded_file = st.file_uploader("Upload CSV with 'Symbol' column", type="csv")
-                
-                if uploaded_file is not None:
-                    try:
-                        df = pd.read_csv(uploaded_file)
-                        if 'Symbol' in df.columns:
-                            symbols = df['Symbol'].tolist()
-                            st.success(f"✅ Loaded {len(symbols)} symbols from uploaded file")
-                            st.dataframe(df.head(), use_container_width=True)
-                        else:
-                            st.error("❌ CSV file must have a 'Symbol' column")
-                            symbols = default_symbols[:20]  # Fallback
-                    except Exception as e:
-                        st.error(f"❌ Error reading file: {str(e)}")
-                        symbols = default_symbols[:20]  # Fallback
-                else:
-                    st.info("📤 Please upload a CSV file")
-                    symbols = default_symbols[:20]  # Show sample until upload
-                    
-            else:  # Manual Selection
-                st.info("✏️ Enter stock symbols separated by commas")
-                manual_symbols = st.text_area(
-                    "Stock Symbols:",
-                    value="RELIANCE, TCS, INFY, HDFCBANK, ICICIBANK",
-                    help="Enter stock symbols separated by commas"
+            with col1:
+                st.markdown(f"""
+                **Strategy:** {strategy.title()}  
+                **Stocks to analyze:** {len(NIFTY_SMALLCAP_250_SYMBOLS)} (Nifty SmallCap 250)  
+                **Top results:** {num_stocks}  
+                **Lookback period:** {lookback_period} months  
+                """)
+            
+            with col2:
+                scan_button = st.button(
+                    "🔍 Start Scan",
+                    type="primary",
+                    use_container_width=True,
+                    help="Begin momentum analysis of all stocks"
                 )
-                
-                if manual_symbols:
-                    symbols = [s.strip().upper() for s in manual_symbols.split(",") if s.strip()]
-                    st.success(f"✅ {len(symbols)} symbols ready: {', '.join(symbols[:5])}{'...' if len(symbols) > 5 else ''}")
-                else:
-                    symbols = default_symbols[:20]
             
-            # Scan button
-            if symbols and st.button("🔍 Start Stock Scan", type="primary"):
-                if selected_rebalance is not None:
-                    selected_date_info = rebalance_dates[selected_rebalance]
-                    cutoff_date = selected_date_info['data_cutoff_date']
-                    
-                    try:
+            # Scan execution
+            if scan_button and selected_rebalance is not None:
+                selected_date_info = rebalance_dates[selected_rebalance]
+                cutoff_date = selected_date_info['data_cutoff_date']
+                
+                try:
+                    with st.spinner("🔄 Running momentum analysis..."):
                         results = st.session_state.scanner.scan_stocks(
-                            symbols=symbols,
+                            symbols=NIFTY_SMALLCAP_250_SYMBOLS,
                             cutoff_date=cutoff_date,
                             strategy=strategy,
                             num_stocks=num_stocks,
                             lookback_period=lookback_period,
                             last_month_exclusion=last_month_exclusion
                         )
+                    
+                    if results:
+                        # Store results in session state
+                        results_df = pd.DataFrame(results, columns=[
+                            "Symbol", "Momentum", "Volatility", "FITP", "Score"
+                        ])
                         
-                        if results:
-                            st.markdown('<div class="success-box">✅ Scan completed successfully!</div>', unsafe_allow_html=True)
-                            
-                            # Display results
-                            st.subheader("🏆 Top Momentum Stocks")
-                            
-                            results_df = pd.DataFrame(results, columns=[
-                                "Symbol", "Momentum", "Volatility", "FITP", "Score"
-                            ])
-                            
-                            # ✅ IMPORTANT: Store in session state to persist across button clicks
-                            st.session_state.results_df = results_df
-                            st.session_state.scan_info = {
-                                "cutoff_date": cutoff_date,
-                                "rebalance_date": selected_date_info['rebalance_date'],
-                                "total_symbols": len(symbols),
-                                "strategy": strategy,
-                                "completed": True  # Add this flag
-                            }
-                            st.session_state.scan_completed = True  # Add this flag
-                            
-                            # Format for display
-                            display_df = results_df.copy()
-                            display_df["Momentum"] = display_df["Momentum"].apply(lambda x: f"{x:.4f}")
-                            display_df["Volatility"] = display_df["Volatility"].apply(lambda x: f"{x:.4f}" if x is not None else "N/A")
-                            display_df["FITP"] = display_df["FITP"].apply(lambda x: f"{x:.4f}" if x is not None else "N/A")
-                            display_df["Score"] = display_df["Score"].apply(lambda x: f"{x:.4f}")
-                            display_df.index = range(1, len(display_df) + 1)
-                            
-                            st.dataframe(display_df, use_container_width=True)
-                            
-                        else:
-                            st.warning("⚠️ No stocks found matching the criteria")
-                            
-                    except Exception as e:
-                        st.error(f"❌ Error during scan: {str(e)}")
-                else:
-                    st.warning("Please select a rebalance date")
-    
-    # GitHub Integration - MOVED OUTSIDE the if results block
-    # Show GitHub Integration if we have completed scan results
-    if hasattr(st.session_state, 'scan_completed') and st.session_state.scan_completed:
-        st.subheader("🔗 GitHub Integration")
-        
-        # Debug information
-        st.write(f"**Debug Info:**")
-        st.write(f"- Scan completed: {st.session_state.scan_completed}")
-        st.write(f"- Results available: {hasattr(st.session_state, 'results_df')}")
-        if hasattr(st.session_state, 'results_df'):
-            st.write(f"- Results rows: {len(st.session_state.results_df)}")
-        
-        if 'github_integration' not in st.session_state:
-            st.session_state.github_integration = GitHubIntegration()
-        
-        # Get the scan info from session state
-        if hasattr(st.session_state, 'scan_info'):
-            scan_info = st.session_state.scan_info
-            cutoff_date = scan_info['cutoff_date']
-            strategy = scan_info['strategy']
-            results_df = st.session_state.results_df
-            
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                # Generate timestamped filename
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                github_filename = f"stock_scan_{cutoff_date.strftime('%Y%m%d')}_{strategy}_{timestamp}.csv"
-                
-                st.write(f"**Will create file:** `{github_filename}`")
-                
-                if st.button("📤 Push to GitHub", type="primary", key="push_github_persistent"):
-                    st.write("🔵 Button clicked!")
-                    
-                    with st.spinner("Pushing to GitHub..."):
-                        try:
-                            success, message = st.session_state.github_integration.push_csv_to_github(
-                                results_df, 
-                                github_filename,
-                                f"Stock scan results - {strategy} strategy - {cutoff_date.strftime('%Y-%m-%d')}"
-                            )
-                            
-                            if success:
-                                st.success(f"✅ {message}")
-                                raw_url = st.session_state.github_integration.get_csv_url(github_filename, raw=True)
-                                st.session_state.latest_csv_url = raw_url
-                                st.session_state.latest_filename = github_filename
-                                st.balloons()
-                            else:
-                                st.error(f"❌ {message}")
-                                
-                        except Exception as e:
-                            st.error(f"❌ Exception: {str(e)}")
-                            import traceback
-                            st.code(traceback.format_exc())
-            
-            with col2:
-                latest_filename = "latest_stock_scan.csv"
-                if st.button("🔄 Update Latest", key="update_latest_persistent"):
-                    st.write("🔵 Update Latest clicked!")
-                    
-                    with st.spinner("Updating latest file..."):
-                        try:
-                            success, message = st.session_state.github_integration.push_csv_to_github(
-                                results_df, 
-                                latest_filename,
-                                f"Update latest scan - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-                            )
-                            
-                            if success:
-                                st.success(f"✅ {message}")
-                                latest_url = st.session_state.github_integration.get_csv_url(latest_filename, raw=True)
-                                st.session_state.latest_csv_url = latest_url
-                                st.session_state.latest_filename = latest_filename
-                                st.balloons()
-                            else:
-                                st.error(f"❌ {message}")
-                                
-                        except Exception as e:
-                            st.error(f"❌ Exception: {str(e)}")
-                            import traceback
-                            st.code(traceback.format_exc())
-            
-            with col3:
-                if st.button("🔄 Clear Scan", key="clear_scan"):
-                    # Clear the scan results
-                    if 'scan_completed' in st.session_state:
-                        del st.session_state.scan_completed
-                    if 'results_df' in st.session_state:
-                        del st.session_state.results_df
-                    if 'scan_info' in st.session_state:
-                        del st.session_state.scan_info
-                    st.success("Scan results cleared!")
-                    st.rerun()
-            
-            # Display current URLs if available
-            if hasattr(st.session_state, 'latest_csv_url'):
-                st.subheader("🌐 Access URLs")
-                
-                url_col1, url_col2 = st.columns(2)
-                
-                with url_col1:
-                    st.markdown("**Raw CSV URL (for other apps):**")
-                    st.code(st.session_state.latest_csv_url, language="text")
-                    
-                    # Test URL
-                    if st.button("🧪 Test URL", key="test_url"):
-                        try:
-                            response = requests.get(st.session_state.latest_csv_url, timeout=10)
-                            if response.status_code == 200:
-                                st.success("✅ URL is accessible")
-                                lines = response.text.split('\n')[:3]
-                                st.text("Preview:")
-                                for line in lines:
-                                    st.text(line)
-                            else:
-                                st.error(f"❌ URL returned status code: {response.status_code}")
-                        except Exception as e:
-                            st.error(f"❌ Error testing URL: {str(e)}")
-                
-                with url_col2:
-                    if hasattr(st.session_state, 'latest_filename'):
-                        github_url = st.session_state.github_integration.get_csv_url(st.session_state.latest_filename, raw=False)
-                        st.markdown("**GitHub View URL:**")
-                        st.code(github_url, language="text")
+                        st.session_state.results_df = results_df
+                        st.session_state.scan_info = {
+                            "cutoff_date": cutoff_date,
+                            "rebalance_date": selected_date_info['rebalance_date'],
+                            "strategy": strategy,
+                            "completed": True
+                        }
                         
-                        if st.button("🔗 Open in GitHub", key="open_github"):
-                            st.markdown(f"[View file on GitHub]({github_url})")
+                        # Success message with animation
+                        st.markdown("""
+                        <div class="scan-results">
+                        """, unsafe_allow_html=True)
+                        
+                        display_status_card("success", "Scan Complete!", f"Found {len(results)} high-momentum stocks", "🎉")
+                        
+                        # Results display
+                        st.subheader("🏆 Top Momentum Stocks")
+                        
+                        # Format results for display
+                        display_df = results_df.copy()
+                        display_df["Momentum"] = display_df["Momentum"].apply(lambda x: f"{x:.4f}")
+                        display_df["Volatility"] = display_df["Volatility"].apply(lambda x: f"{x:.4f}" if x is not None else "N/A")
+                        display_df["FITP"] = display_df["FITP"].apply(lambda x: f"{x:.4f}" if x is not None else "N/A")
+                        display_df["Score"] = display_df["Score"].apply(lambda x: f"{x:.4f}")
+                        display_df.index = range(1, len(display_df) + 1)
+                        
+                        st.dataframe(display_df, use_container_width=True, height=400)
+                        
+                        st.markdown("</div>", unsafe_allow_html=True)
+                        
+                    else:
+                        display_status_card("warning", "No Results", "No stocks found matching the criteria", "⚠️")
+                        
+                except Exception as e:
+                    display_status_card("error", "Scan Error", f"Error during scan: {str(e)}", "❌")
+            
+            # GitHub Integration Section (only show if we have results)
+            # GitHub Integration Section (only show if we have results)
+            if hasattr(st.session_state, 'results_df') and not st.session_state.results_df.empty:
+                st.divider()
+                
+                # GitHub integration section
+                st.markdown("""
+                <div class="github-section">
+                    <h3>🔗 Push to GitHub</h3>
+                    <p>Save your scan results to GitHub for easy access from other applications</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    st.markdown(f"""
+                    **📁 File:** `{GITHUB_CSV_FILENAME}`  
+                    **📊 Rows:** {len(st.session_state.results_df)}  
+                    **🔄 Action:** Replace existing file  
+                    """)
+                
+                with col2:
+                    if st.button("📤 Push to GitHub", type="primary", use_container_width=True):
+                        with st.spinner("🔄 Uploading to GitHub..."):
+                            try:
+                                success, message = st.session_state.github_integration.push_csv_to_github(
+                                    st.session_state.results_df,
+                                    f"Momentum scan - {strategy} strategy - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                                )
+                                
+                                if success:
+                                    display_status_card("success", "Upload Success", message, "✅")
+                                    
+                                    # Show direct URL
+                                    csv_url = st.session_state.github_integration.get_csv_url(raw=True)
+                                    st.markdown(f"""
+                                    **🌐 Direct CSV URL:**
+                                    ```
+                                    {csv_url}
+                                    ```
+                                    """)
+                                    
+                                    # Test URL button
+                                    if st.button("🧪 Test URL", key="test_csv_url"):
+                                        try:
+                                            response = requests.get(csv_url, timeout=10)
+                                            if response.status_code == 200:
+                                                display_status_card("success", "URL Test", "CSV URL is accessible and working", "✅")
+                                                st.text("Preview (first 3 lines):")
+                                                lines = response.text.split('\n')[:3]
+                                                for line in lines:
+                                                    st.code(line)
+                                            else:
+                                                display_status_card("error", "URL Test", f"URL returned status code: {response.status_code}", "❌")
+                                        except Exception as e:
+                                            display_status_card("error", "URL Test", f"Error testing URL: {str(e)}", "❌")
+                                    
+                                    st.balloons()
+                                else:
+                                    display_status_card("error", "Upload Failed", message, "❌")
+                                    
+                            except Exception as e:
+                                display_status_card("error", "Upload Error", f"Unexpected error: {str(e)}", "❌")
+                
+                # Show current file status if it exists
+                status = st.session_state.github_integration.get_repo_status()
+                if status["status"] == "ok" and status.get("csv_exists"):
+                    st.subheader("📄 Current File Status")
+                    
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        csv_url = st.session_state.github_integration.get_csv_url(raw=True)
+                        github_url = st.session_state.github_integration.get_csv_url(raw=False)
+                        
+                        st.markdown(f"""
+                        **📁 File:** `{GITHUB_CSV_FILENAME}`  
+                        **🔗 Raw URL:** [Direct CSV Access]({csv_url})  
+                        **👁️ GitHub View:** [View on GitHub]({github_url})  
+                        """)
+                    
+                    with col2:
+                        if status.get("last_commit"):
+                            commit = status["last_commit"]
+                            st.markdown(f"""
+                            **📝 Last Update:** {commit['hash']}  
+                            **💬 Message:** {commit['message'][:50]}...  
+                            **📅 Date:** {commit['date'][:16]}  
+                            """)
+                
+                # URL usage examples
+                with st.expander("💡 How to use the CSV URL in other applications"):
+                    csv_url_example = st.session_state.github_integration.get_csv_url(raw=True) if hasattr(st.session_state, "github_integration") else "YOUR_CSV_URL"
+                    
+                    st.markdown(f"""
+                    **Python:**
+                    ```python
+                    import pandas as pd
+                    df = pd.read_csv('{csv_url_example}')
+                    print(df.head())
+                    ```
+                    
+                    **JavaScript:**
+                    ```javascript
+                    fetch('{csv_url_example}')
+                        .then(response => response.text())
+                        .then(data => console.log(data));
+                    ```
+                    
+                    **R:**
+                    ```r
+                    library(readr)
+                    df <- read_csv('{csv_url_example}')
+                    head(df)
+                    ```
+                    
+                    **Excel/Google Sheets:**
+                    - Use "Data > From Web" and paste the raw URL
+                    - The data will refresh automatically when you update the file
+                    
+                    **curl:**
+                    ```bash
+                    curl -o momentum_stocks.csv '{csv_url_example}'
+                    ```
+                    
+                    **Power BI:**
+                    ```
+                    Get Data > Web > Enter the raw CSV URL
+                    ```
+                    
+                    **Tableau:**
+                    ```
+                    Connect > To a Server > Web Data Connector > Enter URL
+                    ```
+                    """)
+            
+            elif hasattr(st.session_state, 'authenticated') and st.session_state.authenticated:
+                display_status_card("info", "Ready to Scan", "Complete a momentum scan to enable GitHub integration", "🔍")
     
     with tab2:
         st.subheader("📅 Rebalance Calendar & Trading Days")
@@ -1146,7 +1339,7 @@ def main():
         st.plotly_chart(calendar_fig, use_container_width=True)
         
         # Detailed rebalance schedule
-        st.subheader("📋 Detailed Schedule")
+        st.subheader("📋 Upcoming Schedule")
         schedule_df = pd.DataFrame(rebalance_dates)
         schedule_df['Rebalance Date'] = schedule_df['rebalance_date'].dt.strftime('%Y-%m-%d (%A)')
         schedule_df['Data Cutoff'] = schedule_df['data_cutoff_date'].dt.strftime('%Y-%m-%d (%A)')
@@ -1166,24 +1359,27 @@ def main():
                 'Date': [h.strftime('%Y-%m-%d (%A)') for h in holidays_list],
                 'Days from Today': [(h - datetime.now().date()).days for h in holidays_list]
             })
+            holidays_df = holidays_df[holidays_df['Days from Today'] >= 0]  # Only future holidays
             holidays_df.index = range(1, len(holidays_df) + 1)
             st.dataframe(holidays_df, use_container_width=True)
         else:
-            st.info("No holiday data loaded")
+            display_status_card("info", "Holiday Data", "No holiday data loaded", "📅")
     
     with tab3:
         st.subheader("📊 Analytics Dashboard")
         
         if hasattr(st.session_state, 'results_df') and not st.session_state.results_df.empty:
             # Scan summary metrics
+            st.markdown('<div class="metric-grid">', unsafe_allow_html=True)
+            
             col1, col2, col3, col4 = st.columns(4)
             
             with col1:
                 avg_momentum = st.session_state.results_df['Momentum'].mean()
                 st.markdown(f"""
                 <div class="metric-card">
-                    <h4>📈 Avg Momentum</h4>
-                    <h3>{avg_momentum:.4f}</h3>
+                    <div class="metric-label">📈 Avg Momentum</div>
+                    <div class="metric-value">{avg_momentum:.4f}</div>
                 </div>
                 """, unsafe_allow_html=True)
             
@@ -1191,8 +1387,8 @@ def main():
                 avg_volatility = st.session_state.results_df['Volatility'].mean()
                 st.markdown(f"""
                 <div class="metric-card">
-                    <h4>📊 Avg Volatility</h4>
-                    <h3>{avg_volatility:.4f}</h3>
+                    <div class="metric-label">📊 Avg Volatility</div>
+                    <div class="metric-value">{avg_volatility:.4f}</div>
                 </div>
                 """, unsafe_allow_html=True)
             
@@ -1200,8 +1396,8 @@ def main():
                 top_score = st.session_state.results_df['Score'].max()
                 st.markdown(f"""
                 <div class="metric-card">
-                    <h4>🏆 Top Score</h4>
-                    <h3>{top_score:.4f}</h3>
+                    <div class="metric-label">🏆 Top Score</div>
+                    <div class="metric-value">{top_score:.4f}</div>
                 </div>
                 """, unsafe_allow_html=True)
             
@@ -1209,150 +1405,182 @@ def main():
                 positive_momentum = (st.session_state.results_df['Momentum'] > 0).sum()
                 st.markdown(f"""
                 <div class="metric-card">
-                    <h4>📈 Positive Momentum</h4>
-                    <h3>{positive_momentum}/{len(st.session_state.results_df)}</h3>
+                    <div class="metric-label">📈 Positive Momentum</div>
+                    <div class="metric-value">{positive_momentum}/{len(st.session_state.results_df)}</div>
                 </div>
                 """, unsafe_allow_html=True)
+            
+            st.markdown('</div>', unsafe_allow_html=True)
             
             # Performance charts
             perf_fig = create_performance_charts(st.session_state.results_df)
             if perf_fig:
                 st.plotly_chart(perf_fig, use_container_width=True)
+            
+            # Additional analysis
+            st.subheader("🔍 Detailed Analysis")
+            
+            # Top performers breakdown
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown("**🏆 Top 5 by Momentum**")
+                top_momentum = st.session_state.results_df.nlargest(5, 'Momentum')[['Symbol', 'Momentum']]
+                for idx, row in top_momentum.iterrows():
+                    st.markdown(f"• **{row['Symbol']}**: {row['Momentum']:.4f}")
+            
+            with col2:
+                st.markdown("**📊 Top 5 by Score**")
+                top_score = st.session_state.results_df.nlargest(5, 'Score')[['Symbol', 'Score']]
+                for idx, row in top_score.iterrows():
+                    st.markdown(f"• **{row['Symbol']}**: {row['Score']:.4f}")
         
         else:
-            st.markdown('<div class="info-box">📊 Run a stock scan first to see analytics</div>', unsafe_allow_html=True)
+            display_status_card("info", "No Data", "Run a stock scan first to see detailed analytics", "📊")
     
     with tab4:
-        st.subheader("🔗 GitHub Integration Management")
-        
-        # Initialize GitHub integration
-        if 'github_integration' not in st.session_state:
-            st.session_state.github_integration = GitHubIntegration()
-        
-        # Repository Status
-        st.subheader("📊 Repository Status")
-        status = st.session_state.github_integration.get_repo_status()
-        
-        if status["status"] == "ok":
-            st.markdown('<div class="success-box">✅ Repository Connected</div>', unsafe_allow_html=True)
-            st.markdown(f"**Repository:** {st.session_state.github_integration.username}/{st.session_state.github_integration.repo_name}")
-            
-            if status["last_commit"]:
-                st.markdown(f"""
-                **Last Commit:** {status['last_commit']['hash']}  
-                **Message:** {status['last_commit']['message']}
-                """)
-        
-        else:
-            st.markdown('<div class="warning-box">⚠️ Repository not properly configured</div>', unsafe_allow_html=True)
-        
-        # Current URLs
-        if hasattr(st.session_state, 'latest_filename'):
-            st.subheader("🌐 Current URLs")
-            filename = st.session_state.latest_filename
-            raw_url = st.session_state.github_integration.get_csv_url(filename, raw=True)
-            
-            st.markdown("**Raw CSV URL (for other applications):**")
-            st.code(raw_url, language="text")
-        
-        else:
-            st.info("No files have been uploaded to GitHub yet. Run a scan first.")
-    
-    with tab5:
         st.subheader("ℹ️ About Fyers Stock Scanner Pro")
         
         st.markdown("""
         ### 🎯 Purpose
-        This advanced stock scanning application helps you identify momentum-based investment opportunities 
-        using sophisticated technical analysis, perfectly timed with rebalance dates.
+        This advanced stock scanning application identifies momentum-based investment opportunities 
+        using sophisticated technical analysis, perfectly synchronized with your rebalancing schedule.
         
         ### 🔬 Methodology
         
-        **Momentum Calculation:**
-        - Looks back 12 months (configurable) from the data cutoff date
-        - Calculates price momentum excluding the last month to avoid recency bias
-        - Uses closing prices for accuracy
+        **📈 Momentum Calculation:**
+        - Analyzes price momentum over configurable lookback periods (default: 12 months)
+        - Uses data cutoff dates aligned with rebalancing schedules
+        - Excludes recent periods to avoid recency bias
+        - Calculated as: `(End Price - Start Price) / Start Price`
         
-        **Scoring Strategies:**
+        **🎯 Scoring Strategies:**
         1. **Volatility-Adjusted:** `Score = Momentum / Volatility`
+           - Rewards consistent momentum over erratic performance
         2. **FITP (Fraction in Trend Period):** `Score = Momentum × FITP`
+           - Considers consistency of trend direction
         3. **Pure Momentum:** `Score = Momentum`
+           - Simple momentum ranking
         
-        **FITP Explained:**
-        - For positive momentum: Fraction of days with positive returns
-        - For negative momentum: Fraction of days with negative returns
-        - Measures consistency of the trend
+        **📊 FITP Explained:**
+        - For positive momentum: Percentage of days with positive returns
+        - For negative momentum: Percentage of days with negative returns
+        - Measures trend consistency and reliability
         
-        ### 📅 Rebalance Intelligence
-        - Automatically calculates proper trading days
-        - Excludes weekends and market holidays
-        - Ensures data cutoff is the last trading day before rebalance
-        - Supports both month-start and mid-month rebalancing
+        ### 📅 Smart Rebalancing
+        - **Trading Day Intelligence:** Automatically excludes weekends and holidays
+        - **Proper Cutoff Dates:** Ensures data availability before rebalance execution
+        - **Flexible Scheduling:** Supports month-start and mid-month rebalancing
+        - **Holiday Awareness:** Built-in NSE holiday calendar for 2025
         
-        ### 🔧 Features
-        - **Smart Caching:** Avoids re-downloading data for the same configuration
-        - **Holiday Awareness:** Built-in 2025 market holiday calendar
-        - **Multiple Export Formats:** CSV, Pickle, and summary reports
-        - **Visual Analytics:** Interactive charts and performance metrics
-        - **GitHub Integration:** Automatic CSV upload with direct URL access
-        - **Cross-Platform Access:** URLs work with JavaScript, Python, Java, and more
-        - **Session Persistence:** Scan results persist across page refreshes
+        ### 🏗️ Key Features
         
-        ### 🔗 GitHub Integration Benefits
-        - **Automatic Upload:** Push CSV files directly to GitHub
-        - **Direct URL Access:** Get raw URLs for immediate use in other applications
-        - **Version Control:** All scans are tracked with timestamps
-        - **Global Accessibility:** Access your data from anywhere
-        - **API-like Access:** Use GitHub as a simple data API
-        - **File Replacement:** Automatically overwrites existing files
+        **🔄 Performance Optimizations:**
+        - Smart caching system prevents redundant data downloads
+        - Session state management for persistent results
+        - Efficient API usage with rate limiting
+        
+        **🎨 Modern UI/UX:**
+        - Contemporary design with smooth animations
+        - Responsive layout for all screen sizes
+        - Intuitive status cards and progress indicators
+        - Professional color scheme and typography
+        
+        **🔗 GitHub Integration:**
+        - **Single File Strategy:** Always updates the same file (`{GITHUB_CSV_FILENAME}`)
+        - **Direct URLs:** Instant access for other applications
+        - **Cross-Platform:** Works with Python, JavaScript, Java, R, etc.
+        - **Version Control:** Automatic commit tracking
+        - **Global Access:** Your data available anywhere
         
         ### 📊 Data Sources
-        - **Market Data:** Fyers API (real-time and historical)
-        - **Stock Universe:** Configurable (default: Nifty SmallCap 250)
-        - **Holidays:** NSE holiday calendar for 2025
+        - **Market Data:** Fyers API (NSE real-time and historical)
+        - **Stock Universe:** Official Nifty SmallCap 250 list ({len(NIFTY_SMALLCAP_250_SYMBOLS)} stocks)
+        - **Holidays:** NSE official holiday calendar
         
-        ### 🚀 Usage Workflow
-        1. **Setup:** Configure GitHub repository in sidebar
-        2. **Authenticate** with your Fyers account
-        3. **Select** the next rebalance date
-        4. **Upload** or use default stock list
-        5. **Configure** strategy and parameters
-        6. **Scan** and analyze results
-        7. **Push to GitHub** for automated access
-        8. **Use URLs** in your other applications
+        ### 🚀 Quick Start Guide
         
-        ### ⚡ Performance Tips
-        - Data is cached per configuration to speed up subsequent scans
-        - Use the "Update Latest" feature for consistent file names
-        - Test URLs before integrating with other applications
-        - Monitor the rebalance calendar for optimal timing
-        - Use "Clear Scan" to reset and start fresh
+        1. **🔐 Authentication**
+           - Click the Fyers auth link in the sidebar
+           - Copy the authorization code
+           - Paste it back in the app
+        
+        2. **📅 Select Date**
+           - Choose your next rebalance date
+           - The app calculates the proper data cutoff automatically
+        
+        3. **⚙️ Configure**
+           - Select your preferred momentum strategy
+           - Adjust parameters as needed
+        
+        4. **🔍 Scan**
+           - Click "Start Scan" to analyze all 250 stocks
+           - Wait for the momentum calculations to complete
+        
+        5. **📤 Export**
+           - Push results to GitHub with one click
+           - Get direct URL for use in other applications
+        
+        ### 💡 Pro Tips
+        
+        **📊 Strategy Selection:**
+        - Use **Volatility-Adjusted** for stable, consistent momentum
+        - Use **FITP** when trend consistency matters most
+        - Use **Pure Momentum** for simple ranking by returns
+        
+        **⏰ Timing:**
+        - Run scans 1-2 days before your rebalance date
+        - Monitor the calendar tab for upcoming dates
+        - Consider market conditions when interpreting results
+        
+        **🔗 GitHub Usage:**
+        - The same file is always updated (no duplicates)
+        - Use the raw URL in your other applications
+        - File format is standard CSV with clear column headers
         
         ### 🔒 Security & Privacy
-        - Authentication tokens are temporary and not stored
-        - All data processing happens locally in your browser session
-        - GitHub integration uses public repositories (recommended for data sharing)
-        - No sensitive information is transmitted to external servers
+        - Authentication tokens are temporary and session-based
+        - No sensitive data is permanently stored
+        - All processing happens in your browser session
+        - GitHub integration uses standard Git protocols
         
         ### 📈 Best Practices
-        - Run scans 1-2 days before rebalance dates
-        - Compare different strategies for validation
-        - Monitor consistency across multiple time periods
-        - Consider market conditions when interpreting results
-        - Keep your GitHub repository organized with clear naming conventions
+        - **Diversification:** Don't rely on momentum alone
+        - **Risk Management:** Consider position sizing
+        - **Market Context:** Factor in overall market conditions
+        - **Regular Updates:** Maintain consistent rebalancing schedule
+        - **Backtesting:** Validate strategies before implementation
         
-        ### 🆕 Latest Updates (v3.1)
-        - **Session State Management:** Scan results persist across button clicks
-        - **Improved Error Handling:** Better debugging and error messages
-        - **Enhanced GitHub Integration:** Automatic file replacement and URL generation
-        - **Debug Information:** Real-time status updates during operations
-        - **Cross-Platform URLs:** Direct access for JavaScript, Python, Java applications
+        ### 🆕 Latest Updates (v4.0)
+        
+        **🎨 UI/UX Improvements:**
+        - Complete modern redesign with contemporary aesthetics
+        - Smooth animations and micro-interactions
+        - Better mobile responsiveness
+        - Professional status cards and notifications
+        
+        **🔗 GitHub Enhancements:**
+        - Simplified single-file strategy
+        - Removed redundant "Update Latest" button
+        - Better error handling and status reporting
+        - Direct URL generation and testing
+        
+        **📊 Data Accuracy:**
+        - Updated to official Nifty SmallCap 250 list
+        - Improved caching mechanism
+        - Better error handling for missing data
+        
+        **⚡ Performance:**
+        - Faster scanning with optimized algorithms
+        - Better memory management
+        - Reduced API calls through smart caching
         
         ---
         
-        **Version:** 3.1 Pro with Enhanced Session Management | **Last Updated:** January 2025
+        **Version:** 4.0 Professional | **Updated:** January 2025  
+        **Data Source:** NSE via Fyers API | **Stock Universe:** Nifty SmallCap 250
         
-        *Built with ❤️ for systematic momentum investing and seamless data integration*
+        *Built with ❤️ for systematic momentum investing*
         """)
 
 if __name__ == "__main__":
