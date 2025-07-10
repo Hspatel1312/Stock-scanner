@@ -8,201 +8,132 @@ import pytz
 from fyers_apiv3 import fyersModel
 from typing import Dict, List, Optional, Tuple
 import requests
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
-# Configure the page
+# ================================
+# CONFIGURATION
+# ================================
+
 st.set_page_config(
-    page_title="🚀 Fyers Stock Scanner Pro",
+    page_title="Fyers Stock Scanner Pro",
     page_icon="📈",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
-# Custom CSS for better UI
-st.markdown("""
-<style>
-    .main-header {
-        font-size: 3rem;
-        font-weight: bold;
-        text-align: center;
-        background: linear-gradient(90deg, #1f77b4, #ff7f0e);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 2rem;
-    }
-    
-    .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1rem;
-        border-radius: 10px;
-        color: white;
-        text-align: center;
-        margin: 0.5rem 0;
-    }
-    
-    .success-box {
-        background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-        padding: 1rem;
-        border-radius: 10px;
-        color: white;
-        margin: 1rem 0;
-    }
-    
-    .warning-box {
-        background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
-        padding: 1rem;
-        border-radius: 10px;
-        color: white;
-        margin: 1rem 0;
-    }
-    
-    .info-box {
-        background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
-        padding: 1rem;
-        border-radius: 10px;
-        color: white;
-        margin: 1rem 0;
-    }
-    
-    .stButton > button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        border-radius: 20px;
-        padding: 0.5rem 2rem;
-        font-weight: bold;
-        transition: all 0.3s;
-    }
-    
-    .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# Configuration
 FYERS_CONFIG = {
     "client_id": "F5ZQTMKTTH-100",
-    "secret_key": st.secrets.get("FYERS_SECRET_KEY", "KDHZZYT6FW"),  # Use Streamlit secrets
+    "secret_key": st.secrets.get("FYERS_SECRET_KEY", "KDHZZYT6FW"),
     "redirect_uri": "https://trade.fyers.in/api-login/redirect-uri/index.html"
 }
 
-# Default file paths
-CACHE_FILE = "stock_data_cache.pkl"
 TIMEZONE = pytz.timezone('Asia/Kolkata')
+CACHE_FILE = "stock_data_cache.pkl"
 
-class EnhancedStockScanner:
+# Market holidays for 2025
+HOLIDAYS_2025 = [
+    "2025-02-26", "2025-03-14", "2025-03-31", "2025-04-10",
+    "2025-04-14", "2025-04-18", "2025-05-01", "2025-08-15",
+    "2025-08-27", "2025-10-02", "2025-10-21", "2025-10-22",
+    "2025-11-05", "2025-12-25"
+]
+
+# Nifty SmallCap 250 symbols (exactly 250 from your CSV)
+NIFTY_SMALLCAP_250 = [
+    "360ONE", "AADHARHFC", "AARTIIND", "AAVAS", "ACE", "ABREL", "ABSLAMC", "AEGISLOG", "AFFLE", "AKUMS",
+    "APLLTD", "ALKYLAMINE", "ALOKINDS", "ARE&M", "AMBER", "ANANDRATHI", "ANANTRAJ", "ANGELONE", "APARINDS", "APTUS",
+    "ACI", "ASAHIINDIA", "ASTERDM", "ASTRAZEN", "ATUL", "AVANTIFEED", "BASF", "BEML", "BLS", "BALAMINES",
+    "BALRAMCHIN", "BATAINDIA", "BIKAJI", "BIRLACORPN", "BSOFT", "BLUEDART", "BLUESTARCO", "BBTC", "BRIGADE", "MAPMYINDIA",
+    "CCL", "CESC", "CIEINDIA", "CAMPUS", "CANFINHOME", "CAPLIPOINT", "CGCL", "CASTROLIND", "CEATLTD", "CELLO",
+    "CENTRALBK", "CDSL", "CENTURYPLY", "CERA", "CHALET", "CHAMBLFERT", "CHEMPLASTS", "CHENNPETRO", "CHOLAHLDNG", "CUB",
+    "CLEAN", "CAMS", "CONCORDBIO", "CRAFTSMAN", "CREDITACC", "CROMPTON", "CYIENT", "DOMS", "DATAPATTNS", "DEEPAKFERT",
+    "DEVYANI", "LALPATHLAB", "EIDPARRY", "EIHOTEL", "EASEMYTRIP", "ELECON", "ELGIEQUIP", "EMCURE", "ENGINERSIN", "EQUITASBNK",
+    "ERIS", "FINEORG", "FINCABLES", "FINPIPE", "FSL", "FIVESTAR", "GRINFRA", "GVT&D", "GRSE", "GILLETTE",
+    "GLENMARK", "GODIGIT", "GPIL", "GODFRYPHLP", "GODREJAGRO", "GRANULES", "GRAPHITE", "GESHIP", "GAEL", "GMDCLTD",
+    "GNFC", "GPPL", "GSFC", "GSPL", "HEG", "HBLENGINE", "HFCL", "HAPPSTMNDS", "HSCL", "HINDCOPPER",
+    "HOMEFIRST", "HONASA", "ISEC", "IFCI", "IIFL", "INOXINDIA", "IRCON", "ITI", "INDGN", "INDIACEM",
+    "INDIAMART", "IEX", "INOXWIND", "INTELLECT", "JBCHEPHARM", "JBMA", "JKLAKSHMI", "JKTYRE", "JMFINANCIL", "JPPOWER",
+    "J&KBANK", "JINDALSAW", "JUBLINGREA", "JUBLPHARMA", "JWL", "JUSTDIAL", "JYOTHYLAB", "JYOTICNC", "KNRCON", "KSB",
+    "KAJARIACER", "KPIL", "KANSAINER", "KARURVYSYA", "KAYNES", "KEC", "KFINTECH", "KIRLOSBROS", "KIRLOSENG", "KIMS",
+    "LATENTVIEW", "LAURUSLABS", "LEMONTREE", "MMTC", "MGL", "MAHSEAMLES", "MAHLIFE", "MANAPPURAM", "MASTEK", "METROPOLIS",
+    "MINDACORP", "MOTILALOFS", "MCX", "NATCOPHARM", "NBCC", "NCC", "NSLNISP", "NH", "NATIONALUM", "NAVINFLUOR",
+    "NETWEB", "NETWORK18", "NEWGEN", "NUVAMA", "NUVOCO", "OLECTRA", "PCBL", "PNBHOUSING", "PNCINFRA", "PTCIL",
+    "PVRINOX", "PFIZER", "PEL", "PPLPHARMA", "POLYMED", "PRAJIND", "QUESS", "RRKABEL", "RBLBANK", "RHIM",
+    "RITES", "RADICO", "RAILTEL", "RAINBOW", "RAJESHEXPO", "RKFORGE", "RCF", "RATNAMANI", "RTNINDIA", "RAYMOND",
+    "REDINGTON", "ROUTE", "SBFC", "SAMMAANCAP", "SANOFI", "SAPPHIRE", "SAREGAMA", "SCHNEIDER", "SCI", "RENUKA",
+    "SHYAMMETL", "SIGNATURE", "SOBHA", "SONATSOFTW", "SWSOLAR", "SUMICHEM", "SPARC", "SUVENPHAR", "SWANENERGY", "SYRMA",
+    "TBOTEK", "TVSSCS", "TANLA", "TTML", "TECHNOE", "TEJASNET", "RAMCOCEM", "TITAGARH", "TRIDENT", "TRIVENI",
+    "TRITURBINE", "UCOBANK", "UTIAMC", "UJJIVANSFB", "USHAMART", "VGUARD", "VIPIND", "DBREALTY", "VTL", "VARROC",
+    "MANYAVAR", "VIJAYA", "VINATIORGA", "WELCORP", "WELSPUNLIV", "WESTLIFE", "WHIRLPOOL", "ZEEL", "ZENSARTECH", "ECLERX"
+]
+
+# ================================
+# UTILITY FUNCTIONS
+# ================================
+
+def get_holidays() -> set:
+    """Get market holidays as date objects"""
+    return set(pd.to_datetime(HOLIDAYS_2025).date)
+
+def is_trading_day(date: datetime) -> bool:
+    """Check if a given date is a trading day"""
+    holidays = get_holidays()
+    return date.weekday() < 5 and date.date() not in holidays
+
+def get_previous_trading_day(date: datetime) -> datetime:
+    """Get the previous trading day"""
+    prev_day = date - timedelta(days=1)
+    while not is_trading_day(prev_day):
+        prev_day -= timedelta(days=1)
+    return prev_day
+
+def get_rebalance_dates(num_dates: int = 6) -> List[Dict]:
+    """Get upcoming rebalance dates"""
+    rebalance_dates = []
+    current_date = datetime.now(TIMEZONE).replace(day=1)
+    
+    for _ in range(num_dates):
+        # First trading day of month
+        first_day = current_date.replace(day=1)
+        while not is_trading_day(first_day):
+            first_day += timedelta(days=1)
+        
+        data_cutoff = get_previous_trading_day(first_day)
+        rebalance_dates.append({
+            "rebalance_date": first_day,
+            "data_cutoff_date": data_cutoff,
+            "type": "Month Start"
+        })
+        
+        # 15th of month (or next trading day)
+        mid_month = current_date.replace(day=15)
+        while not is_trading_day(mid_month):
+            mid_month += timedelta(days=1)
+        
+        data_cutoff = get_previous_trading_day(mid_month)
+        rebalance_dates.append({
+            "rebalance_date": mid_month,
+            "data_cutoff_date": data_cutoff,
+            "type": "Mid Month"
+        })
+        
+        # Next month
+        if current_date.month == 12:
+            current_date = current_date.replace(year=current_date.year + 1, month=1)
+        else:
+            current_date = current_date.replace(month=current_date.month + 1)
+    
+    return sorted(rebalance_dates, key=lambda x: x['rebalance_date'])
+
+# ================================
+# STOCK SCANNER CLASS
+# ================================
+
+class StockScanner:
     def __init__(self):
         self.fyers = None
         self.cached_data = None
-        self.holidays = self.load_holidays()
-        
-    def load_holidays(self) -> set:
-        """Load holidays from embedded data or uploaded file"""
-        try:
-            # Default holidays for 2025 (embedded in code)
-            default_holidays = [
-                "2025-02-26",  # Mahashivratri
-                "2025-03-14",  # Holi
-                "2025-03-31",  # Id-Ul-Fitr (Ramadan Eid)
-                "2025-04-10",  # Shri Mahavir Jayanti
-                "2025-04-14",  # Dr. Baba Saheb Ambedkar Jayanti
-                "2025-04-18",  # Good Friday
-                "2025-05-01",  # Maharashtra Day
-                "2025-08-15",  # Independence Day / Parsi New Year
-                "2025-08-27",  # Shri Ganesh Chaturthi
-                "2025-10-02",  # Mahatma Gandhi Jayanti/Dussehra
-                "2025-10-21",  # Diwali Laxmi Pujan
-                "2025-10-22",  # Balipratipada
-                "2025-11-05",  # Prakash Gurpurb Sri Guru Nanak Dev
-                "2025-12-25"   # Christmas
-            ]
-            
-            # Try to read uploaded holidays file first
-            if os.path.exists('holidays_2025.csv'):
-                holidays_df = pd.read_csv('holidays_2025.csv')
-                holidays = set(pd.to_datetime(holidays_df['Date'], format='%d-%b-%Y').dt.date)
-                return holidays
-            else:
-                # Use embedded default holidays
-                return set(pd.to_datetime(default_holidays).date)
-        except Exception as e:
-            st.warning(f"Using default holidays due to error: {str(e)}")
-            # Fallback to embedded holidays
-            default_holidays = [
-                "2025-02-26", "2025-03-14", "2025-03-31", "2025-04-10",
-                "2025-04-14", "2025-04-18", "2025-05-01", "2025-08-15",
-                "2025-08-27", "2025-10-02", "2025-10-21", "2025-10-22",
-                "2025-11-05", "2025-12-25"
-            ]
-            return set(pd.to_datetime(default_holidays).date)
-    
-    def get_trading_days(self, start_date: datetime, end_date: datetime) -> List[datetime]:
-        """Generate trading days between start and end date"""
-        trading_days = []
-        current_date = start_date
-        
-        while current_date <= end_date:
-            # Check if it's a weekday and not a holiday
-            if (current_date.weekday() < 5) and (current_date.date() not in self.holidays):
-                trading_days.append(current_date)
-            current_date += timedelta(days=1)
-        
-        return trading_days
-    
-    def get_next_rebalance_dates(self, num_dates: int = 6) -> List[Dict]:
-        """Get next few rebalance dates with proper trading day calculation"""
-        rebalance_dates = []
-        current_date = datetime.now(TIMEZONE).replace(day=1)
-        
-        for _ in range(num_dates):
-            # First trading day of the month
-            first_day = current_date.replace(day=1)
-            trading_days = self.get_trading_days(first_day, first_day + timedelta(days=10))
-            if trading_days:
-                first_trading_day = trading_days[0]
-                # Data cutoff is previous trading day
-                data_cutoff = self.get_previous_trading_day(first_trading_day)
-                
-                rebalance_dates.append({
-                    "rebalance_date": first_trading_day,
-                    "data_cutoff_date": data_cutoff,
-                    "type": "Month Start"
-                })
-            
-            # 15th trading day of the month
-            mid_month = current_date.replace(day=15)
-            trading_days = self.get_trading_days(mid_month, mid_month + timedelta(days=10))
-            if trading_days:
-                mid_trading_day = trading_days[0]
-                data_cutoff = self.get_previous_trading_day(mid_trading_day)
-                
-                rebalance_dates.append({
-                    "rebalance_date": mid_trading_day,
-                    "data_cutoff_date": data_cutoff,
-                    "type": "Mid Month"
-                })
-            
-            # Move to next month
-            if current_date.month == 12:
-                current_date = current_date.replace(year=current_date.year + 1, month=1)
-            else:
-                current_date = current_date.replace(month=current_date.month + 1)
-        
-        return sorted(rebalance_dates, key=lambda x: x['rebalance_date'])
-    
-    def get_previous_trading_day(self, date: datetime) -> datetime:
-        """Get the previous trading day"""
-        prev_day = date - timedelta(days=1)
-        while prev_day.weekday() >= 5 or prev_day.date() in self.holidays:
-            prev_day -= timedelta(days=1)
-        return prev_day
     
     def authenticate_fyers(self, auth_code: str) -> bool:
-        """Authenticate with Fyers using auth code"""
+        """Authenticate with Fyers"""
         try:
             session = fyersModel.SessionModel(
                 client_id=FYERS_CONFIG["client_id"],
@@ -217,15 +148,13 @@ class EnhancedStockScanner:
             
             if token:
                 self.fyers = fyersModel.FyersModel(
-                    client_id=FYERS_CONFIG["client_id"], 
-                    token=token, 
+                    client_id=FYERS_CONFIG["client_id"],
+                    token=token,
                     is_async=False
                 )
                 
-                # Test the token
                 profile = self.fyers.get_profile()
-                if profile.get("s") == "ok":
-                    return True
+                return profile.get("s") == "ok"
             return False
         except Exception as e:
             st.error(f"Authentication error: {str(e)}")
@@ -237,11 +166,10 @@ class EnhancedStockScanner:
             all_data = []
             start_date = pd.Timestamp(start)
             end_date = pd.Timestamp(end)
-            chunk_days = 365
             
             current = end_date
             while current >= start_date:
-                chunk_start = max(start_date, current - pd.Timedelta(days=chunk_days - 1))
+                chunk_start = max(start_date, current - pd.Timedelta(days=365))
                 
                 response = self.fyers.history({
                     "symbol": f"NSE:{symbol}-EQ",
@@ -253,9 +181,8 @@ class EnhancedStockScanner:
                 })
                 
                 if response["s"] == "ok":
-                    candles = response.get("candles", [])
-                    all_data.extend(candles)
-                    
+                    all_data.extend(response.get("candles", []))
+                
                 current = chunk_start - pd.Timedelta(days=1)
                 time.sleep(0.5)
             
@@ -272,73 +199,66 @@ class EnhancedStockScanner:
             st.error(f"Error fetching data for {symbol}: {str(e)}")
             return pd.DataFrame()
     
-    def calculate_momentum_volatility_fitp(self, df: pd.DataFrame, date: pd.Timestamp, 
-                                          lookback_period: int = 12, last_month_exclusion: int = 0) -> Tuple[Optional[float], Optional[float], Optional[float]]:
-        """Calculate momentum, volatility, and FITP based on exact date range"""
+    def calculate_metrics(self, df: pd.DataFrame, cutoff_date: datetime, lookback_months: int = 12) -> Tuple[Optional[float], Optional[float], Optional[float]]:
+        """Calculate momentum, volatility, and FITP"""
         try:
             all_dates = df.index
             
-            # End date: Apply last month exclusion from the cutoff date
-            end_date = date - pd.offsets.MonthBegin(last_month_exclusion)
+            # End date
+            end_date = cutoff_date
             if end_date not in all_dates:
                 previous_dates = all_dates[all_dates <= end_date]
                 if len(previous_dates) == 0:
                     return None, None, None
                 end_date = previous_dates[-1]
-            end_price = df['close'].loc[end_date]
-        
-            # Start date: Go back exactly 'lookback_period' months from end_date
-            start_date = end_date - pd.offsets.MonthBegin(lookback_period)
+            
+            # Start date
+            start_date = end_date - pd.offsets.MonthBegin(lookback_months)
             if start_date not in all_dates:
                 previous_dates = all_dates[all_dates <= start_date]
                 if len(previous_dates) == 0:
                     return None, None, None
                 start_date = previous_dates[-1]
-        
+            
             if start_date >= end_date:
                 return None, None, None
-        
-            subset = df.loc[start_date:end_date]
-            if len(subset) < 2:
-                return None, None, None
-        
-            start_price = df['close'].loc[start_date]
             
-            # Momentum: (End Price - Start Price) / Start Price
+            # Calculate metrics
+            start_price = df['close'].loc[start_date]
+            end_price = df['close'].loc[end_date]
             momentum = (end_price - start_price) / start_price
             
-            # Volatility: Standard deviation of daily returns
+            subset = df.loc[start_date:end_date]
             daily_returns = subset['close'].pct_change().dropna()
             
             if len(daily_returns) < 1:
                 return momentum, None, None
+            
             volatility = daily_returns.std()
-        
-            # FITP: Fraction in Trend Period
+            
             if momentum > 0:
-                fitp = (daily_returns > 0).mean()  # Fraction of positive days
+                fitp = (daily_returns > 0).mean()
             elif momentum < 0:
-                fitp = (daily_returns < 0).mean()  # Fraction of negative days
+                fitp = (daily_returns < 0).mean()
             else:
                 fitp = 0.5
-                
+            
             return momentum, volatility, fitp
+            
         except Exception as e:
             st.error(f"Error calculating metrics: {str(e)}")
             return None, None, None
     
     def scan_stocks(self, symbols: List[str], cutoff_date: datetime, strategy: str = "volatility", 
-                   num_stocks: int = 20, lookback_period: int = 12, last_month_exclusion: int = 0) -> List[Tuple[str, float, float, float, float]]:
-        """Scan and rank stocks based on momentum strategy with proper cutoff date"""
+                   num_stocks: int = 20, lookback_months: int = 12) -> List[Tuple[str, float, float, float, float]]:
+        """Scan and rank stocks"""
         if not self.fyers:
-            st.error("Fyers not authenticated!")
+            st.error("Please authenticate with Fyers first!")
             return []
         
-        scores = []
-        
-        # Check cache first
+        # Check cache
+        cache_key = f"{cutoff_date.strftime('%Y-%m-%d')}_{strategy}_{lookback_months}"
         cache_valid = False
-        cache_key = f"{cutoff_date.strftime('%Y-%m-%d')}_{strategy}_{lookback_period}_{last_month_exclusion}"
         
         if os.path.exists(CACHE_FILE):
             try:
@@ -347,24 +267,21 @@ class EnhancedStockScanner:
                     if cached_data.get("cache_key") == cache_key:
                         self.cached_data = cached_data["data"]
                         cache_valid = True
-                        st.success("✅ Using cached data for this configuration")
+                        st.success("✅ Using cached data")
             except:
                 pass
         
+        # Fetch data if not cached
         if not cache_valid:
-            st.info(f"📊 Fetching data until {cutoff_date.strftime('%Y-%m-%d')}... This may take a few minutes.")
-            # Fetch historical data up to cutoff date
-            end = cutoff_date
-            start = end - pd.Timedelta(days=730)  # 2 years of data
+            st.info("📊 Fetching fresh data...")
             hist_data = {}
-            
             progress_bar = st.progress(0)
-            status_text = st.empty()
             
             for i, symbol in enumerate(symbols):
-                status_text.text(f"📈 Fetching data for {symbol} ({i+1}/{len(symbols)})")
-                df = self.fetch_historical_data(symbol, start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"))
-                hist_data[symbol] = df
+                st.text(f"Fetching {symbol} ({i+1}/{len(symbols)})")
+                start_date = (cutoff_date - pd.Timedelta(days=730)).strftime("%Y-%m-%d")
+                end_date = cutoff_date.strftime("%Y-%m-%d")
+                hist_data[symbol] = self.fetch_historical_data(symbol, start_date, end_date)
                 progress_bar.progress((i + 1) / len(symbols))
             
             self.cached_data = hist_data
@@ -372,30 +289,21 @@ class EnhancedStockScanner:
             # Save cache
             try:
                 with open(CACHE_FILE, "wb") as f:
-                    pickle.dump({
-                        "cache_key": cache_key,
-                        "data": hist_data,
-                        "timestamp": datetime.now().isoformat()
-                    }, f)
-                st.success("💾 Data cached successfully")
+                    pickle.dump({"cache_key": cache_key, "data": hist_data}, f)
             except Exception as e:
                 st.warning(f"Could not save cache: {str(e)}")
         
         # Calculate scores
         st.info("🧮 Calculating momentum scores...")
+        scores = []
         progress_bar = st.progress(0)
-        status_text = st.empty()
         
         for i, symbol in enumerate(symbols):
-            status_text.text(f"🔍 Analyzing {symbol} ({i+1}/{len(symbols)})")
             df = self.cached_data.get(symbol, pd.DataFrame())
-            
             if df.empty:
                 continue
             
-            momentum, volatility, fitp = self.calculate_momentum_volatility_fitp(
-                df, cutoff_date, lookback_period, last_month_exclusion
-            )
+            momentum, volatility, fitp = self.calculate_metrics(df, cutoff_date, lookback_months)
             
             if momentum is not None:
                 if strategy == 'volatility' and volatility is not None and volatility > 0:
@@ -404,512 +312,227 @@ class EnhancedStockScanner:
                     score = momentum * fitp
                 else:
                     score = momentum
+                
                 scores.append((symbol, momentum, volatility, fitp, score))
             
             progress_bar.progress((i + 1) / len(symbols))
         
-        # Sort and return top stocks
-        sorted_scores = sorted(scores, key=lambda x: x[4], reverse=True)[:num_stocks]
-        return sorted_scores
+        # Return top stocks
+        return sorted(scores, key=lambda x: x[4], reverse=True)[:num_stocks]
 
-def create_performance_charts(results_df):
-    """Create performance visualization charts - placeholder for future"""
-    # This function kept for future use but simplified
-    return None
+# ================================
+# USER INTERFACE
+# ================================
 
 def main():
-    # Header
-    st.markdown('<h1 class="main-header">🚀 Fyers Stock Scanner Pro</h1>', unsafe_allow_html=True)
-    st.markdown("### Advanced momentum-based stock screening with rebalance date intelligence")
+    st.title("🚀 Fyers Stock Scanner Pro")
+    st.markdown("### Advanced momentum-based stock screening")
     
     # Initialize scanner
     if 'scanner' not in st.session_state:
-        st.session_state.scanner = EnhancedStockScanner()
+        st.session_state.scanner = StockScanner()
     
     # Sidebar
     with st.sidebar:
-        st.header("🔧 Control Panel")
+        st.header("🔧 Settings")
         
-        # Authentication section
-        st.subheader("🔐 Fyers Authentication")
+        # Authentication
+        st.subheader("🔐 Authentication")
         auth_url = f"https://api-t1.fyers.in/api/v3/generate-authcode?client_id={FYERS_CONFIG['client_id']}&redirect_uri={FYERS_CONFIG['redirect_uri']}&response_type=code&state=None"
-        st.markdown(f"**Step 1:** [🔗 Get Authorization Code]({auth_url})")
+        st.markdown(f"[Get Auth Code]({auth_url})")
         
-        auth_code = st.text_input(
-            "**Step 2:** Enter Authorization Code:",
-            type="password",
-            help="Paste the authorization code from Fyers"
-        )
+        auth_code = st.text_input("Authorization Code:", type="password")
         
-        if st.button("🔑 Authenticate", type="primary"):
+        if st.button("🔑 Authenticate"):
             if auth_code:
-                with st.spinner("Authenticating..."):
-                    if st.session_state.scanner.authenticate_fyers(auth_code):
-                        st.success("✅ Authentication successful!")
-                        st.session_state.authenticated = True
-                    else:
-                        st.error("❌ Authentication failed!")
-                        st.session_state.authenticated = False
+                if st.session_state.scanner.authenticate_fyers(auth_code):
+                    st.success("✅ Authenticated!")
+                    st.session_state.authenticated = True
+                else:
+                    st.error("❌ Authentication failed!")
             else:
-                st.warning("Please enter authorization code")
+                st.warning("Please enter auth code")
         
-        # Scanner parameters
-        st.subheader("📊 Scanner Parameters")
-        strategy = st.selectbox("Strategy:", ["volatility", "fitp", "momentum"], help="Momentum scoring strategy")
-        num_stocks = st.slider("Number of stocks:", 5, 50, 20)
-        lookback_period = st.slider("Lookback period (months):", 3, 24, 12)
-        last_month_exclusion = st.slider("Last month exclusion:", 0, 3, 0)
-        
-        # Store in session state for charts
-        st.session_state.strategy = strategy
-        st.session_state.num_stocks = num_stocks
-        st.session_state.lookback_period = lookback_period
+        # Parameters
+        st.subheader("📊 Parameters")
+        strategy = st.selectbox("Strategy:", ["volatility", "fitp", "momentum"])
+        num_stocks = st.slider("Top stocks:", 5, 50, 20)
+        lookback_months = st.slider("Lookback (months):", 3, 24, 12)
     
-    # Main content tabs
-    tab1, tab2, tab3, tab4 = st.tabs(["📈 Scanner", "📅 Rebalance Calendar", "📊 Analytics", "ℹ️ About"])
+    # Main content
+    tab1, tab2, tab3 = st.tabs(["📈 Scanner", "📅 Calendar", "ℹ️ About"])
     
     with tab1:
-        if not hasattr(st.session_state, 'authenticated') or not st.session_state.authenticated:
-            st.markdown('<div class="info-box">👆 Please authenticate with Fyers using the sidebar first</div>', unsafe_allow_html=True)
-            
-            # Show sample data format
-            st.subheader("📋 Sample Data Format")
-            sample_df = pd.DataFrame({
-                "Symbol": ["RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK"],
-                "Company Name": ["Reliance Industries", "Tata Consultancy Services", "Infosys", "HDFC Bank", "ICICI Bank"],
-                "Industry": ["Oil & Gas", "IT Services", "IT Services", "Banking", "Banking"]
-            })
-            st.dataframe(sample_df, use_container_width=True)
-            
-        else:
-            # Rebalance date selection
-            st.subheader("📅 Select Rebalance Date")
-            rebalance_dates = st.session_state.scanner.get_next_rebalance_dates(6)
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                selected_rebalance = st.selectbox(
-                    "Choose rebalance date:",
-                    options=range(len(rebalance_dates)),
-                    format_func=lambda x: f"{rebalance_dates[x]['rebalance_date'].strftime('%Y-%m-%d')} ({rebalance_dates[x]['type']})"
-                )
-            
-            with col2:
-                if selected_rebalance is not None:
-                    selected_date_info = rebalance_dates[selected_rebalance]
-                    cutoff_date = selected_date_info['data_cutoff_date']
-                    lookback_start = cutoff_date - pd.DateOffset(months=lookback_period)
-                    
-                    st.markdown(f"""
-                    <div class="metric-card">
-                        <h4>📊 Analysis Period</h4>
-                        <p><strong>Data Cutoff:</strong> {cutoff_date.strftime('%Y-%m-%d')}</p>
-                        <p><strong>Lookback Start:</strong> {lookback_start.strftime('%Y-%m-%d')}</p>
-                        <p><strong>Period:</strong> {lookback_period} months</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-            
-            # Stock universe selection
-            st.subheader("📁 Stock Universe")
-            
-            # Default stock list (Nifty SmallCap 250 - exactly 250 symbols)
-            default_symbols = [
-                "360ONE", "AADHARHFC", "AARTIIND", "AAVAS", "ACE", "ABREL", "ABSLAMC", "ADANIENSOL", "ADANIREALTY", 
-                "AFFLE", "AGARIND", "AGRITECH", "AHLEAST", "AIFL", "AIREN", "AKSHOPTFBR", "ALKYLAMINE", "ALLCARGO", 
-                "ALOKINDS", "AMBER", "AMJLAND", "ANANTRAJ", "ANGELONE", "ANURAS", "APCOTEXIND", "APLAPOLLO", "APOLLOTYRE", 
-                "APTUS", "ARMANFIN", "ARVSMART", "ASAHIINDIA", "ASHOKA", "ASTERDM", "ASTRAL", "ATUL", "AVANTIFEED", 
-                "AWHCL", "AXISBANK", "BALAMINES", "BALRAMCHIN", "BANARISUG", "BANDHANBNK", "BASF", "BATAINDIA", 
-                "BAYERCROP", "BBL", "BECTORFOOD", "BEML", "BERGEPAINT", "BHARATFORG", "BHARTIHEXA", "BHEL", 
-                "BIKAJI", "BIRLACORPN", "BLUEDART", "BLUESTARCO", "BOFT", "BOMDYEING", "BPCL", "BSE", 
-                "BSOFT", "CANFINHOME", "CAMS", "CARBORUNIV", "CARERATING", "CARTRADE", "CASTROLIND", "CCL", 
-                "CEATLTD", "CENTRALBK", "CENTURYPLY", "CENTURYTEX", "CERA", "CHALET", "CHAMBLFERT", "CHENNPETRO", 
-                "CHOLAHLDNG", "CHOLAFIN", "COCHINSHIP", "COFORGE", "COLPAL", "CONFIPET", "CORDSCABLE", "COROMANDEL", 
-                "COSMOFIRST", "CRAFTSMAN", "CREDITACC", "CRISIL", "CROMPTON", "CUB", "CUMMINSIND", "CYIENT", 
-                "DALMIASUG", "DATAPATTNS", "DCBBANK", "DCMSHRIRAM", "DEEPAKFERT", "DEEPAKNTR", "DELTACORP", "DEVYANI", 
-                "DHANI", "DHANUKA", "DIVISLAB", "DIXON", "DLF", "DMART", "DRREDDY", "EICHERMOT", 
-                "EIDPARRY", "EIHOTEL", "ELECON", "ELGIEQUIP", "EMAMILTD", "ENDURANCE", "ENGINERSIN", "EQUITAS", 
-                "ERIS", "ESABINDIA", "ESCORTS", "EXIDEIND", "FACT", "FDC", "FEDERALBNK", "FEDFINA", 
-                "FELDVR", "FIEMIND", "FINPIPE", "FIVESTAR", "FORTIS", "FSL", "GALAXYSURF", "GARFIBRES", 
-                "GESHIP", "GICRE", "GILLETTE", "GLAND", "GLAXO", "GLENMARK", "GLOBALVECT", 
-                "GNFC", "GODFRYPHLP", "GODREJCP", "GODREJIND", "GODREJPROP", "GPPL", "GRANULES", "GRAPHITE", 
-                "GRASIM", "GREAVESCOT", "GRINDWELL", "GRSE", "GSFC", "GSPL", "GUJALKALI", "GUJGASLTD", 
-                "GULFOILLUB", "HAL", "HAPPSTMNDS", "HATHWAY", "HATSUN", "HAVELLS", "HCG", "HDFCAMC", 
-                "HDFCLIFE", "HEG", "HEROMOTOCO", "HFCL", "HIKAL", "HINDALCO", "HINDCOPPER", "HINDPETRO", 
-                "HINDUNILVR", "HLEGLAS", "HOMEFIRST", "HONASA", "HSCL", "HUDCO", "ICICIPRULI", "IDEA", 
-                "IDFC", "IDFCFIRSTB", "IEX", "IFBIND", "IIFL", "INDHOTEL", "INDIACEM", "INDIAMART", 
-                "INDIANB", "INDIGO", "INDOCO", "INDOSTAR", "INDUSINDBK", "INDUSTOWER", "INFIBEAM", "INFY", 
-                "INGERRAND", "INOXLEISUR", "INSPIRISYS", "INTELLECT", "IOB", "IOLCP", "IONEXCHANG", "IRCON", 
-                "IRFC", "ITC", "ITI", "JBCHEPHARM", "JKCEMENT", "JKLAKSHMI", "JKPAPER", 
-                "JMFINANCIL", "JSL", "JSWENERGY", "JSWINFRA", "JUBLFOOD", "JUBLPHARMA", "JUSTDIAL", "JYOTHYLAB", 
-                "KAJARIACER", "KALPATPOWR", "KALYANKJIL", "KAMATHOTEL", "KANSAINER", "KEC", "KEI", "KFINTECH", 
-                "KIMS", "KIRLOSENG", "KIRLOSIND", "KNRCON", "KOLTEPATIL", "KRBL", "KPITTECH", "KSBL", 
-                "KSB", "LAOPALA", "LATENTVIEW", "LAXMIMACH", "LCCINFOTEC", "LEMONTREE", "LEUCINE", "LGBBROSLTD", 
-                "LICI", "LICHSGFIN", "LINDEINDIA", "LLOYDSME", "LT", "LTF", "LTTS", "LUPIN", 
-                "LUXIND", "LXCHEM", "LYKALABS", "MAHABANK", "MAHLOG", "MANAPPURAM", 
-                "MARICO", "MARUTI", "MASTEK", "MAXHEALTH", "MAZAGON", "MCX", "MEDPLUS", 
-                "METROBRAND", "MFSL", "MGL", "MHRIL", "MIDHANI", "MMTC", "MOIL", "MOTHERSON", 
-                "MPHASIS", "MRF", "MSUMI", "MTARTECH", "MUTHOOTFIN", "NATCOPHARM", "NAUKRI", 
-                "NAVINFLUOR", "NBCC", "NCC", "NESTLEIND", "NETWEB", "NEWGEN", "NH", "NHPC", 
-                "NIACL", "NIITLTD", "NMDC", "NOCIL", "NSLNISP", "NTPC", "NUVOCO", "NYKAA", 
-                "OBEROIRLTY", "OFSS", "OIL", "ONGC", "PANATONE", "PATANJALI", "PAYTM", "PB", 
-                "PEL", "PERSISTENT", "PETRONET", "PFC", "PFIZER", "PGHH", "PHOENIXLTD", "PIDILITIND", 
-                "PIIND", "PNB", "PNBHOUSING", "PNCINFRA", "POLYCAB", "POONAWALLA", "POWERGRID", "POWERINDIA", 
-                "PPSMPL", "PRAJIND", "PRESTIGE", "PRSMJOHNSN", "PTC", "PTL", "PVRINOX", "QUESS", 
-                "RADICO", "RAILTEL", "RAJESHEXPO", "RALLIS", "RAMCOCEM", "RANEHOLDIN", "RBLBANK", "RCF", 
-                "RECLTD", "REDINGTON", "RELAXO", "RELIANCE", "RENUKA", "REPCOHOME", "RESPONIND", "RVNL", 
-                "SAFARI", "SAIL", "SANOFI", "SAPPHIRE", "SARDAEN", "SBICARD", "SBILIFE", "SCHAEFFLER", 
-                "SCHNEIDER", "SCI", "SFL", "SGBL", "SHANKARA", "SHARDACROP", "SHILPAMED", "SHOPERSTOP", 
-                "SHREECEM", "SHREYAS", "SHRIRAMFIN", "SHYAMMETL", "SIEMENS", "SIS", "SJVN", "SKFINDIA", 
-                "SRF", "STARHEALTH", "STELCO", "SUBEXLTD", "SUNTECK", "SUNTV", "SUPRAJIT", "SUPRIYA", 
-                "SURYAROSNI", "SUZLON", "SWANENERGY", "SYMPHONY", "SYNGENE", "TARSONS", "TATACOMM", "TATACONSUM", 
-                "TATAELXSI", "TATAINVEST", "TATAMOTORS", "TATAPOWER", "TATATECH", "TCS", "TECHM", "THERMAX", 
-                "THYROCARE", "TIPSINDLTD", "TITAGARH", "TITAN", "TNPETRO", "TRENT", "TRIDENT", "TRITURBINE", 
-                "TTKPRESTIG", "TV18BRDCST", "TVSHLTD", "TVSSCS", "UBL", "ULTRACEMCO", "UNOMINDA", "UPL", 
-                "UTIAMC", "UTTAMSUGAR", "VEDL", "VENKEYS", "VGUARD", "VINATIORGA", "VIPIND", "VMART", 
-                "VOLTAMP", "VOLTAS", "VTL", "WELCORP", "WESTLIFE", "WHIRLPOOL", "WIPRO", "WOCKPHARMA", 
-                "YESBANK", "ZEEL", "ZENSARTECH", "ZFCVINDIA", "ZOMATO", "ZYDUSWELL"
-            ]
-            
-            # Stock universe options
-            stock_source = st.radio(
-                "Choose your stock universe:",
-                ["📈 Default Nifty SmallCap 250", "📁 Upload Custom List", "✏️ Manual Selection"],
-                horizontal=True
+        if not hasattr(st.session_state, 'authenticated'):
+            st.info("👈 Please authenticate with Fyers first")
+            return
+        
+        # Rebalance date selection
+        st.subheader("📅 Select Rebalance Date")
+        rebalance_dates = get_rebalance_dates(6)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            selected_idx = st.selectbox(
+                "Rebalance Date:",
+                range(len(rebalance_dates)),
+                format_func=lambda x: f"{rebalance_dates[x]['rebalance_date'].strftime('%Y-%m-%d')} ({rebalance_dates[x]['type']})"
             )
+        
+        with col2:
+            if selected_idx is not None:
+                selected_date = rebalance_dates[selected_idx]
+                cutoff_date = selected_date['data_cutoff_date']
+                lookback_start = cutoff_date - pd.DateOffset(months=lookback_months)
+                
+                st.info(f"""
+                **Data Cutoff:** {cutoff_date.strftime('%Y-%m-%d')}  
+                **Lookback:** {lookback_start.strftime('%Y-%m-%d')} to {cutoff_date.strftime('%Y-%m-%d')}  
+                **Period:** {lookback_months} months
+                """)
+        
+        # Stock selection
+        st.subheader("📁 Stock Universe")
+        stock_option = st.radio(
+            "Choose stocks:",
+            ["📈 Nifty SmallCap 250", "📁 Upload CSV", "✏️ Manual Entry"]
+        )
+        
+        if stock_option == "📈 Nifty SmallCap 250":
+            symbols = NIFTY_SMALLCAP_250
+            st.success(f"✅ Using {len(symbols)} stocks from Nifty SmallCap 250")
             
-            if stock_source == "📈 Default Nifty SmallCap 250":
-                symbols = default_symbols[:250]  # Ensure exactly 250 stocks
-                st.success(f"✅ Using Nifty SmallCap 250 list ({len(symbols)} symbols)")
-                
-                # Show sample stocks
-                with st.expander(f"📋 View stock list ({len(symbols)} symbols)"):
-                    # Display in columns for better visualization
-                    cols = st.columns(5)
-                    for i, symbol in enumerate(symbols):
-                        with cols[i % 5]:
-                            st.write(f"• {symbol}")
-                            
-                # Verification message
-                if len(default_symbols) != 250:
-                    st.warning(f"⚠️ Stock list contains {len(default_symbols)} symbols, trimmed to 250")
-                
-            elif stock_source == "📁 Upload Custom List":
-                uploaded_file = st.file_uploader("Upload CSV with 'Symbol' column", type="csv")
-                
-                if uploaded_file is not None:
-                    try:
-                        df = pd.read_csv(uploaded_file)
-                        if 'Symbol' in df.columns:
-                            symbols = df['Symbol'].tolist()
-                            st.success(f"✅ Loaded {len(symbols)} symbols from uploaded file")
-                            st.dataframe(df.head(), use_container_width=True)
-                        else:
-                            st.error("❌ CSV file must have a 'Symbol' column")
-                            symbols = default_symbols[:20]  # Fallback
-                    except Exception as e:
-                        st.error(f"❌ Error reading file: {str(e)}")
-                        symbols = default_symbols[:20]  # Fallback
+        elif stock_option == "📁 Upload CSV":
+            uploaded_file = st.file_uploader("Upload CSV with 'Symbol' column", type="csv")
+            if uploaded_file:
+                df = pd.read_csv(uploaded_file)
+                if 'Symbol' in df.columns:
+                    symbols = df['Symbol'].tolist()
+                    st.success(f"✅ Loaded {len(symbols)} symbols")
                 else:
-                    st.info("📤 Please upload a CSV file")
-                    symbols = default_symbols[:20]  # Show sample until upload
-                    
-            else:  # Manual Selection
-                st.info("✏️ Enter stock symbols separated by commas")
-                manual_symbols = st.text_area(
-                    "Stock Symbols:",
-                    value="RELIANCE, TCS, INFY, HDFCBANK, ICICIBANK",
-                    help="Enter stock symbols separated by commas"
+                    st.error("CSV must have 'Symbol' column")
+                    symbols = NIFTY_SMALLCAP_250[:20]
+            else:
+                symbols = NIFTY_SMALLCAP_250[:20]
+                
+        else:  # Manual entry
+            manual_input = st.text_area("Enter symbols (comma-separated):", "RELIANCE,TCS,INFY")
+            symbols = [s.strip().upper() for s in manual_input.split(",") if s.strip()]
+            st.info(f"Ready to scan {len(symbols)} symbols")
+        
+        # Scan button
+        if st.button("🔍 Start Scan", type="primary"):
+            if selected_idx is not None:
+                selected_date = rebalance_dates[selected_idx]
+                cutoff_date = selected_date['data_cutoff_date']
+                
+                st.warning("⚠️ Do not refresh during scanning!")
+                
+                results = st.session_state.scanner.scan_stocks(
+                    symbols=symbols,
+                    cutoff_date=cutoff_date,
+                    strategy=strategy,
+                    num_stocks=num_stocks,
+                    lookback_months=lookback_months
                 )
                 
-                if manual_symbols:
-                    symbols = [s.strip().upper() for s in manual_symbols.split(",") if s.strip()]
-                    st.success(f"✅ {len(symbols)} symbols ready: {', '.join(symbols[:5])}{'...' if len(symbols) > 5 else ''}")
+                if results:
+                    st.success("✅ Scan completed!")
+                    
+                    # Display results
+                    st.subheader("🏆 Top Momentum Stocks")
+                    
+                    df_results = pd.DataFrame(results, columns=["Symbol", "Momentum", "Volatility", "FITP", "Score"])
+                    df_display = df_results.copy()
+                    df_display["Momentum"] = df_display["Momentum"].apply(lambda x: f"{x:.4f}")
+                    df_display["Volatility"] = df_display["Volatility"].apply(lambda x: f"{x:.4f}" if x is not None else "N/A")
+                    df_display["FITP"] = df_display["FITP"].apply(lambda x: f"{x:.4f}" if x is not None else "N/A")
+                    df_display["Score"] = df_display["Score"].apply(lambda x: f"{x:.4f}")
+                    df_display.index = range(1, len(df_display) + 1)
+                    
+                    st.dataframe(df_display, use_container_width=True)
+                    
+                    # Download options
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        csv_data = df_results.to_csv(index=False)
+                        st.download_button("📥 Download CSV", csv_data, f"scan_{cutoff_date.strftime('%Y%m%d')}.csv")
+                    
+                    with col2:
+                        df_results.to_csv("latest_results.csv", index=False)
+                        with open("latest_results.csv", "rb") as f:
+                            st.download_button("📤 GitHub Upload", f.read(), "latest_results.csv")
+                    
+                    with col3:
+                        pickle_data = {"results": results, "timestamp": datetime.now().isoformat()}
+                        pickle_file = f"results_{cutoff_date.strftime('%Y%m%d')}.pkl"
+                        with open(pickle_file, 'wb') as f:
+                            pickle.dump(pickle_data, f)
+                        with open(pickle_file, 'rb') as f:
+                            st.download_button("📥 Pickle File", f.read(), pickle_file)
+                        try:
+                            os.remove(pickle_file)
+                        except:
+                            pass
                 else:
-                    symbols = default_symbols[:20]
-            
-            # Scan button
-            if symbols and st.button("🔍 Start Stock Scan", type="primary"):
-                if selected_rebalance is not None:
-                    selected_date_info = rebalance_dates[selected_rebalance]
-                    cutoff_date = selected_date_info['data_cutoff_date']
-                    
-                    # Warning about refresh
-                    st.warning("⚠️ **Important:** Do not refresh the page during scanning! This process may take 5-10 minutes for 250+ stocks.")
-                    
-                    # Show calculation period details
-                    lookback_start = cutoff_date - pd.DateOffset(months=lookback_period)
-                    
-                    st.info(f"""
-                    📊 **Analysis Details:**
-                    - **Rebalance Date:** {selected_date_info['rebalance_date'].strftime('%Y-%m-%d')}
-                    - **Data Cutoff:** {cutoff_date.strftime('%Y-%m-%d')} (last trading day before rebalance)
-                    - **Lookback Period:** {lookback_period} months ({lookback_start.strftime('%Y-%m-%d')} to {cutoff_date.strftime('%Y-%m-%d')})
-                    - **Strategy:** {strategy.title()}
-                    """)
-                    
-                    try:
-                        results = st.session_state.scanner.scan_stocks(
-                            symbols=symbols,
-                            cutoff_date=cutoff_date,
-                            strategy=strategy,
-                            num_stocks=num_stocks,
-                            lookback_period=lookback_period,
-                            last_month_exclusion=last_month_exclusion
-                        )
-                        
-                        if results:
-                            st.markdown('<div class="success-box">✅ Scan completed successfully!</div>', unsafe_allow_html=True)
-                            
-                            # Display results
-                            st.subheader("🏆 Top Momentum Stocks")
-                            
-                            results_df = pd.DataFrame(results, columns=[
-                                "Symbol", "Momentum", "Volatility", "FITP", "Score"
-                            ])
-                            
-                            # Format for display
-                            display_df = results_df.copy()
-                            display_df["Momentum"] = display_df["Momentum"].apply(lambda x: f"{x:.4f}")
-                            display_df["Volatility"] = display_df["Volatility"].apply(lambda x: f"{x:.4f}" if x is not None else "N/A")
-                            display_df["FITP"] = display_df["FITP"].apply(lambda x: f"{x:.4f}" if x is not None else "N/A")
-                            display_df["Score"] = display_df["Score"].apply(lambda x: f"{x:.4f}")
-                            display_df.index = range(1, len(display_df) + 1)
-                            
-                            st.dataframe(display_df, use_container_width=True)
-                            
-                            # Store results for other tabs
-                            st.session_state.results_df = results_df
-                            st.session_state.scan_info = {
-                                "cutoff_date": cutoff_date,
-                                "rebalance_date": selected_date_info['rebalance_date'],
-                                "total_symbols": len(symbols),
-                                "strategy": strategy
-                            }
-                            
-                            # Download options
-                            col1, col2, col3 = st.columns(3)
-                            
-                            with col1:
-                                csv = results_df.to_csv(index=False)
-                                st.download_button(
-                                    label="📥 Download CSV",
-                                    data=csv,
-                                    file_name=f"stock_scan_{cutoff_date.strftime('%Y%m%d')}.csv",
-                                    mime="text/csv"
-                                )
-                            
-                            with col2:
-                                # Save for GitHub upload
-                                results_df.to_csv("latest_results.csv", index=False)
-                                with open("latest_results.csv", "rb") as f:
-                                    st.download_button(
-                                        label="📤 For GitHub Upload",
-                                        data=f.read(),
-                                        file_name="latest_results.csv",
-                                        mime="text/csv"
-                                    )
-                            
-                            with col3:
-                                # Pickle file
-                                pickle_data = {
-                                    "results": results,
-                                    "scan_info": st.session_state.scan_info,
-                                    "timestamp": datetime.now().isoformat()
-                                }
-                                pickle_filename = f"scan_results_{cutoff_date.strftime('%Y%m%d')}.pkl"
-                                with open(pickle_filename, 'wb') as f:
-                                    pickle.dump(pickle_data, f)
-                                with open(pickle_filename, 'rb') as f:
-                                    st.download_button(
-                                        label="📥 Download Pickle",
-                                        data=f.read(),
-                                        file_name=pickle_filename,
-                                        mime="application/octet-stream"
-                                    )
-                                
-                                # Clean up
-                                try:
-                                    os.remove(pickle_filename)
-                                except:
-                                    pass
-                        else:
-                            st.warning("⚠️ No stocks found matching the criteria")
-                            
-                    except Exception as e:
-                        st.error(f"❌ Error during scan: {str(e)}")
-                else:
-                    st.warning("Please select a rebalance date")
+                    st.warning("No stocks found matching criteria")
     
     with tab2:
-        st.subheader("📅 Rebalance Calendar & Trading Days")
+        st.subheader("📅 Rebalance Calendar")
         
-        # Detailed rebalance schedule
-        st.subheader("📋 Detailed Schedule")
-        schedule_df = pd.DataFrame(rebalance_dates)
-        schedule_df['Rebalance Date'] = schedule_df['rebalance_date'].dt.strftime('%Y-%m-%d (%A)')
-        schedule_df['Data Cutoff'] = schedule_df['data_cutoff_date'].dt.strftime('%Y-%m-%d (%A)')
-        schedule_df['Days Until'] = (schedule_df['rebalance_date'] - datetime.now(TIMEZONE)).dt.days
+        rebalance_dates = get_rebalance_dates(12)
+        df_calendar = pd.DataFrame(rebalance_dates)
+        df_calendar['Rebalance Date'] = df_calendar['rebalance_date'].dt.strftime('%Y-%m-%d (%A)')
+        df_calendar['Data Cutoff'] = df_calendar['data_cutoff_date'].dt.strftime('%Y-%m-%d (%A)')
+        df_calendar['Days Until'] = (df_calendar['rebalance_date'] - datetime.now(TIMEZONE)).dt.days
         
-        display_schedule = schedule_df[['type', 'Rebalance Date', 'Data Cutoff', 'Days Until']].copy()
-        display_schedule.columns = ['Type', 'Rebalance Date', 'Data Cutoff Date', 'Days Until']
-        display_schedule.index = range(1, len(display_schedule) + 1)
+        display_df = df_calendar[['type', 'Rebalance Date', 'Data Cutoff', 'Days Until']].copy()
+        display_df.columns = ['Type', 'Rebalance Date', 'Data Cutoff', 'Days Until']
+        display_df.index = range(1, len(display_df) + 1)
         
-        st.dataframe(display_schedule, use_container_width=True)
+        st.dataframe(display_df, use_container_width=True)
         
-        # Holiday information
+        # Holidays
         st.subheader("🎭 Market Holidays 2025")
-        if st.session_state.scanner.holidays:
-            holidays_list = sorted(list(st.session_state.scanner.holidays))
-            holidays_df = pd.DataFrame({
-                'Date': [h.strftime('%Y-%m-%d (%A)') for h in holidays_list],
-                'Days from Today': [(h - datetime.now().date()).days for h in holidays_list]
-            })
-            holidays_df.index = range(1, len(holidays_df) + 1)
-            st.dataframe(holidays_df, use_container_width=True)
-        else:
-            st.info("No holiday data loaded")
+        holidays = get_holidays()
+        holidays_df = pd.DataFrame({
+            'Date': [h.strftime('%Y-%m-%d (%A)') for h in sorted(holidays)],
+            'Days from Today': [(h - datetime.now().date()).days for h in sorted(holidays)]
+        })
+        holidays_df.index = range(1, len(holidays_df) + 1)
+        st.dataframe(holidays_df, use_container_width=True)
     
     with tab3:
-        st.subheader("📊 Analytics Dashboard")
-        st.info("📈 Analytics features will be available here in future updates!")
-        
-        # Placeholder for future analytics
-        st.markdown("""
-        **Coming Soon:**
-        - Performance metrics and charts
-        - Stock correlation analysis  
-        - Sector-wise breakdown
-        - Historical backtest results
-        - Risk metrics dashboard
-        
-        For now, focus on the Scanner tab for stock selection.
-        """)
-        
-        # Show sample placeholder
-        if st.button("📊 Preview Analytics (Demo)"):
-            sample_data = {
-                "Metric": ["Total Stocks Analyzed", "Avg Momentum", "Top Score", "Positive Momentum %"],
-                "Value": ["250", "0.1234", "5.6789", "60%"]
-            }
-            sample_df = pd.DataFrame(sample_data)
-            st.dataframe(sample_df, use_container_width=True)
-            st.caption("*This is sample data - real analytics coming soon!")
-        
-        else:
-            st.markdown('<div class="info-box">📊 Run a stock scan first to see analytics</div>', unsafe_allow_html=True)
-            
-            # Show sample analytics
-            st.subheader("📈 Sample Analytics Preview")
-            sample_data = pd.DataFrame({
-                'Symbol': ['RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'ICICIBANK'],
-                'Momentum': [0.1245, 0.0876, 0.1532, 0.0654, 0.0987],
-                'Volatility': [0.0234, 0.0198, 0.0276, 0.0187, 0.0234],
-                'FITP': [0.6234, 0.5876, 0.6732, 0.5456, 0.6123],
-                'Score': [5.3205, 4.4242, 5.5507, 3.4973, 4.2179]
-            })
-            
-            sample_fig = create_performance_charts(sample_data)
-            if sample_fig:
-                st.plotly_chart(sample_fig, use_container_width=True)
-    
-    with tab4:
-        st.subheader("ℹ️ About Fyers Stock Scanner Pro")
+        st.subheader("ℹ️ About")
         
         st.markdown("""
         ### 🎯 Purpose
-        This advanced stock scanning application helps you identify momentum-based investment opportunities 
-        using sophisticated technical analysis, perfectly timed with rebalance dates.
+        Advanced momentum-based stock screening with intelligent rebalance timing.
         
         ### 🔬 Methodology
+        - **Momentum:** Price change over lookback period
+        - **Volatility-Adjusted:** Momentum ÷ Volatility  
+        - **FITP:** Fraction in Trend Period (consistency measure)
         
-        **Momentum Calculation:**
-        - Looks back 12 months (configurable) from the data cutoff date
-        - Calculates price momentum excluding the last month to avoid recency bias
-        - Uses closing prices for accuracy
+        ### 📊 Features
+        - **250 Stock Universe:** Nifty SmallCap 250 index
+        - **Smart Caching:** Avoids re-downloading data
+        - **Holiday Awareness:** Proper trading day calculations
+        - **Multiple Export Formats:** CSV, Pickle files
         
-        **Scoring Strategies:**
-        1. **Volatility-Adjusted:** `Score = Momentum / Volatility`
-        2. **FITP (Fraction in Trend Period):** `Score = Momentum × FITP`
-        3. **Pure Momentum:** `Score = Momentum`
-        
-        **FITP Explained:**
-        - For positive momentum: Fraction of days with positive returns
-        - For negative momentum: Fraction of days with negative returns
-        - Measures consistency of the trend
-        
-        ### 📅 Rebalance Intelligence
-        - Automatically calculates proper trading days
-        - Excludes weekends and market holidays
-        - Ensures data cutoff is the last trading day before rebalance
-        - Supports both month-start and mid-month rebalancing
-        
-        ### 🔧 Features
-        - **Smart Caching:** Avoids re-downloading data for the same configuration
-        - **Holiday Awareness:** Built-in 2025 market holiday calendar
-        - **Multiple Export Formats:** CSV, Pickle, and summary reports
-        - **Visual Analytics:** Interactive charts and performance metrics
-        - **GitHub Integration:** Export-ready files for automated workflows
-        
-        ### 📊 Data Sources
-        - **Market Data:** Fyers API (real-time and historical)
-        - **Stock Universe:** Configurable (default: Nifty SmallCap 250)
-        - **Holidays:** NSE holiday calendar for 2025
-        
-        ### 🚀 Usage Workflow
-        1. **Authenticate** with your Fyers account
-        2. **Select** the next rebalance date
-        3. **Upload** or use default stock list
-        4. **Configure** strategy and parameters
-        5. **Scan** and analyze results
-        6. **Export** for further analysis or automated trading
-        
-        ### ⚡ Performance Tips
-        - Data is cached per configuration to speed up subsequent scans
-        - Use the GitHub export feature for automated Java applications
-        - Monitor the rebalance calendar for optimal timing
-        
-        ### 🔒 Security & Privacy
-        - Authentication tokens are temporary and not stored
-        - All data processing happens locally in your browser session
-        - No sensitive information is transmitted to external servers
+        ### 🚀 Usage
+        1. Authenticate with Fyers
+        2. Select rebalance date  
+        3. Choose stock universe
+        4. Configure parameters
+        5. Run scan and download results
         
         ### 📈 Best Practices
-        - Run scans 1-2 days before rebalance dates
-        - Compare different strategies for validation
-        - Monitor consistency across multiple time periods
-        - Consider market conditions when interpreting results
-        
-        ---
-        
-        **Version:** 2.0 Pro | **Last Updated:** January 2025
-        
-        *Built with ❤️ for systematic momentum investing*
+        - Run 1-2 days before rebalance
+        - Compare multiple strategies
+        - Consider market conditions
         """)
-        
-        # Technical specifications
-        with st.expander("🔧 Technical Specifications"):
-            st.markdown("""
-            **Dependencies:**
-            - Streamlit 1.28+
-            - Fyers API v3
-            - Pandas for data manipulation
-            - Plotly for visualizations
-            - PyTZ for timezone handling
-            
-            **API Limits:**
-            - Fyers: 1000 requests per minute
-            - Data retention: 2 years historical
-            - Cache validity: Per day and configuration
-            
-            **File Formats Supported:**
-            - Input: CSV with 'Symbol' column
-            - Output: CSV, Pickle, Markdown reports
-            
-            **Browser Compatibility:**
-            - Chrome/Edge 90+
-            - Firefox 88+
-            - Safari 14+
-            """)
 
 if __name__ == "__main__":
     main()
