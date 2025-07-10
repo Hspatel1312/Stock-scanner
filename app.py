@@ -170,12 +170,12 @@ __pycache__/
         return True
     
     def push_csv_to_github(self, df, filename, commit_message=None):
-        """Push CSV file to the same repository in data folder"""
+        """Push CSV file to the same repository in data folder with better error handling"""
         try:
             if not self.ensure_repo_exists():
                 return False, "Repository not found or data folder creation failed."
             
-            # Save CSV to the data folder
+            # Save CSV to the data folder (this will overwrite existing files)
             csv_path = self.data_folder / filename
             df.to_csv(csv_path, index=False)
             
@@ -187,55 +187,80 @@ __pycache__/
                 "columns": list(df.columns),
                 "scan_date": datetime.now().strftime("%Y-%m-%d"),
                 "generated_by": "Fyers Stock Scanner Pro",
-                "file_size_kb": round(csv_path.stat().st_size / 1024, 2)
+                "file_size_kb": round(csv_path.stat().st_size / 1024, 2),
+                "replaced_existing": csv_path.exists()
             }
             
             metadata_path = self.data_folder / f"{filename.replace('.csv', '_metadata.json')}"
             with open(metadata_path, 'w') as f:
                 json.dump(metadata, f, indent=2)
             
-            # Git operations
+            # Git operations with better error handling
             if commit_message is None:
-                commit_message = f"Update {filename} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                action = "Replace" if csv_path.exists() else "Add"
+                commit_message = f"{action} {filename} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
             
             # Change to repo directory and commit
             original_cwd = Path.cwd()
-            os.chdir(self.repo_path)
             
             try:
+                os.chdir(self.repo_path)
+                
                 # Check if git repo is initialized
-                result = subprocess.run(["git", "status"], capture_output=True, text=True)
+                result = subprocess.run(["git", "status"], capture_output=True, text=True, timeout=30)
                 if result.returncode != 0:
-                    return False, "Not a git repository."
+                    return False, f"Not a git repository: {result.stderr}"
+                
+                # Configure git user if not set (for Streamlit Cloud)
+                subprocess.run(["git", "config", "user.email", "streamlit-app@example.com"], 
+                            capture_output=True, timeout=10)
+                subprocess.run(["git", "config", "user.name", "Streamlit App"], 
+                            capture_output=True, timeout=10)
                 
                 # Git operations - add files from data folder
-                subprocess.run(["git", "add", f"data/{filename}"], check=True, capture_output=True)
-                subprocess.run(["git", "add", f"data/{filename.replace('.csv', '_metadata.json')}"], check=True, capture_output=True)
-                
-                # Also add .gitignore if it was created
-                subprocess.run(["git", "add", ".gitignore"], capture_output=True)
+                add_result = subprocess.run(["git", "add", f"data/{filename}"], 
+                                        check=True, capture_output=True, timeout=30)
+                subprocess.run(["git", "add", f"data/{filename.replace('.csv', '_metadata.json')}"], 
+                            check=True, capture_output=True, timeout=30)
                 
                 # Check if there are changes to commit
-                result = subprocess.run(["git", "diff", "--cached", "--quiet"], capture_output=True)
-                if result.returncode == 0:
-                    return True, f"No changes to commit for {filename}"
+                diff_result = subprocess.run(["git", "diff", "--cached", "--quiet"], 
+                                        capture_output=True, timeout=30)
+                if diff_result.returncode == 0:
+                    return True, f"File {filename} already up to date (no changes to commit)"
                 
-                subprocess.run(["git", "commit", "-m", commit_message], check=True, capture_output=True)
-                subprocess.run(["git", "push"], check=True, capture_output=True)
+                # Commit changes
+                commit_result = subprocess.run(["git", "commit", "-m", commit_message], 
+                                            check=True, capture_output=True, timeout=30)
                 
-                return True, f"Successfully pushed {filename} to GitHub in data folder"
+                # Push changes
+                push_result = subprocess.run(["git", "push"], 
+                                        check=True, capture_output=True, timeout=60)
+                
+                return True, f"Successfully {'replaced' if metadata.get('replaced_existing') else 'added'} {filename} on GitHub"
+            
+            except subprocess.TimeoutExpired:
+                return False, "Git operation timed out. Please try again."
             
             except subprocess.CalledProcessError as e:
                 error_msg = f"Git operation failed: {e}"
                 if e.stderr:
-                    error_msg += f" - {e.stderr.decode()}"
-                return False, error_msg
+                    stderr_msg = e.stderr.decode() if isinstance(e.stderr, bytes) else str(e.stderr)
+                    error_msg += f" - {stderr_msg}"
+                
+                # Check for common issues
+                if "permission denied" in error_msg.lower():
+                    return False, "Permission denied. GitHub authentication may be required."
+                elif "not found" in error_msg.lower():
+                    return False, "Repository or file not found. Check your GitHub setup."
+                else:
+                    return False, error_msg
             
             finally:
                 os.chdir(original_cwd)
                 
         except Exception as e:
-            return False, f"Error pushing to GitHub: {str(e)}"
+            return False, f"Unexpected error: {str(e)}"
     
     def get_csv_url(self, filename, raw=True):
         """Get direct URL to CSV file in data folder"""
@@ -984,6 +1009,8 @@ def main():
                             
                             col1, col2, col3 = st.columns(3)
                             
+                            # In the GitHub Integration Section, replace the push button code:
+
                             with col1:
                                 # Generate timestamped filename
                                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -991,44 +1018,56 @@ def main():
                                 
                                 if st.button("📤 Push to GitHub", type="primary"):
                                     with st.spinner("Pushing to GitHub..."):
-                                        success, message = st.session_state.github_integration.push_csv_to_github(
-                                            results_df, 
-                                            github_filename,
-                                            f"Stock scan results - {strategy} strategy - {cutoff_date.strftime('%Y-%m-%d')}"
-                                        )
-                                        
-                                        if success:
-                                            st.success(message)
+                                        try:
+                                            success, message = st.session_state.github_integration.push_csv_to_github(
+                                                results_df, 
+                                                github_filename,
+                                                f"Stock scan results - {strategy} strategy - {cutoff_date.strftime('%Y-%m-%d')}"
+                                            )
                                             
-                                            # Display access URLs
-                                            raw_url = st.session_state.github_integration.get_csv_url(github_filename, raw=True)
-                                            github_url = st.session_state.github_integration.get_csv_url(github_filename, raw=False)
-                                            
-                                            st.session_state.latest_csv_url = raw_url
-                                            st.session_state.latest_github_url = github_url
-                                            st.session_state.latest_filename = github_filename
-                                            
-                                        else:
-                                            st.error(message)
-                            
+                                            if success:
+                                                st.success(f"✅ {message}")
+                                                
+                                                # Display access URLs
+                                                raw_url = st.session_state.github_integration.get_csv_url(github_filename, raw=True)
+                                                github_url = st.session_state.github_integration.get_csv_url(github_filename, raw=False)
+                                                
+                                                st.session_state.latest_csv_url = raw_url
+                                                st.session_state.latest_github_url = github_url
+                                                st.session_state.latest_filename = github_filename
+                                                
+                                                # Show immediate feedback
+                                                st.balloons()
+                                                
+                                            else:
+                                                st.error(f"❌ {message}")
+                                                
+                                        except Exception as e:
+                                            st.error(f"❌ Unexpected error: {str(e)}")
+
                             with col2:
-                                # Always push latest results
+                                # Always push latest results (this WILL replace existing file)
                                 latest_filename = "latest_stock_scan.csv"
                                 if st.button("🔄 Update Latest"):
                                     with st.spinner("Updating latest file..."):
-                                        success, message = st.session_state.github_integration.push_csv_to_github(
-                                            results_df, 
-                                            latest_filename,
-                                            f"Update latest scan - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-                                        )
-                                        
-                                        if success:
-                                            st.success("Latest file updated!")
-                                            latest_url = st.session_state.github_integration.get_csv_url(latest_filename, raw=True)
-                                            st.session_state.latest_csv_url = latest_url
-                                            st.session_state.latest_filename = latest_filename
-                                        else:
-                                            st.error(message)
+                                        try:
+                                            success, message = st.session_state.github_integration.push_csv_to_github(
+                                                results_df, 
+                                                latest_filename,
+                                                f"Update latest scan - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                                            )
+                                            
+                                            if success:
+                                                st.success(f"✅ {message}")
+                                                latest_url = st.session_state.github_integration.get_csv_url(latest_filename, raw=True)
+                                                st.session_state.latest_csv_url = latest_url
+                                                st.session_state.latest_filename = latest_filename
+                                                st.balloons()
+                                            else:
+                                                st.error(f"❌ {message}")
+                                                
+                                        except Exception as e:
+                                            st.error(f"❌ Unexpected error: {str(e)}")
                             
                             with col3:
                                 if st.button("📋 Show Access URLs"):
