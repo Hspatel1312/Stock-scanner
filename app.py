@@ -83,10 +83,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Configuration
+# Configuration  
 FYERS_CONFIG = {
     "client_id": "F5ZQTMKTTH-100",
-    "secret_key": "KDHZZYT6FW",
+    "secret_key": st.secrets.get("FYERS_SECRET_KEY", "KDHZZYT6FW"),  # ← Uses secrets now
     "redirect_uri": "https://trade.fyers.in/api-login/redirect-uri/index.html"
 }
 
