@@ -83,10 +83,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Configuration  
+# Configuration
 FYERS_CONFIG = {
     "client_id": "F5ZQTMKTTH-100",
-    "secret_key": st.secrets.get("FYERS_SECRET_KEY", "KDHZZYT6FW"),  # ← Uses secrets now
+    "secret_key": st.secrets.get("FYERS_SECRET_KEY", "KDHZZYT6FW"),  # Use Streamlit secrets
     "redirect_uri": "https://trade.fyers.in/api-login/redirect-uri/index.html"
 }
 
@@ -274,9 +274,11 @@ class EnhancedStockScanner:
     
     def calculate_momentum_volatility_fitp(self, df: pd.DataFrame, date: pd.Timestamp, 
                                           lookback_period: int = 12, last_month_exclusion: int = 0) -> Tuple[Optional[float], Optional[float], Optional[float]]:
-        """Calculate momentum, volatility, and FITP"""
+        """Calculate momentum, volatility, and FITP based on exact date range"""
         try:
             all_dates = df.index
+            
+            # End date: Apply last month exclusion from the cutoff date
             end_date = date - pd.offsets.MonthBegin(last_month_exclusion)
             if end_date not in all_dates:
                 previous_dates = all_dates[all_dates <= end_date]
@@ -285,6 +287,7 @@ class EnhancedStockScanner:
                 end_date = previous_dates[-1]
             end_price = df['close'].loc[end_date]
         
+            # Start date: Go back exactly 'lookback_period' months from end_date
             start_date = end_date - pd.offsets.MonthBegin(lookback_period)
             if start_date not in all_dates:
                 previous_dates = all_dates[all_dates <= start_date]
@@ -300,17 +303,22 @@ class EnhancedStockScanner:
                 return None, None, None
         
             start_price = df['close'].loc[start_date]
+            
+            # Momentum: (End Price - Start Price) / Start Price
             momentum = (end_price - start_price) / start_price
+            
+            # Volatility: Standard deviation of daily returns
             daily_returns = subset['close'].pct_change().dropna()
             
             if len(daily_returns) < 1:
                 return momentum, None, None
             volatility = daily_returns.std()
         
+            # FITP: Fraction in Trend Period
             if momentum > 0:
-                fitp = (daily_returns > 0).mean()
+                fitp = (daily_returns > 0).mean()  # Fraction of positive days
             elif momentum < 0:
-                fitp = (daily_returns < 0).mean()
+                fitp = (daily_returns < 0).mean()  # Fraction of negative days
             else:
                 fitp = 0.5
                 
@@ -330,7 +338,7 @@ class EnhancedStockScanner:
         
         # Check cache first
         cache_valid = False
-        cache_key = f"{cutoff_date.strftime('%Y-%m-%d')}_{strategy}_{lookback_period}"
+        cache_key = f"{cutoff_date.strftime('%Y-%m-%d')}_{strategy}_{lookback_period}_{last_month_exclusion}"
         
         if os.path.exists(CACHE_FILE):
             try:
@@ -404,82 +412,10 @@ class EnhancedStockScanner:
         sorted_scores = sorted(scores, key=lambda x: x[4], reverse=True)[:num_stocks]
         return sorted_scores
 
-def create_rebalance_calendar():
-    """Create a visual rebalance calendar"""
-    scanner = EnhancedStockScanner()
-    rebalance_dates = scanner.get_next_rebalance_dates(12)
-    
-    # Create calendar visualization
-    df_calendar = pd.DataFrame(rebalance_dates)
-    df_calendar['rebalance_date_str'] = df_calendar['rebalance_date'].dt.strftime('%Y-%m-%d')
-    df_calendar['data_cutoff_str'] = df_calendar['data_cutoff_date'].dt.strftime('%Y-%m-%d')
-    
-    fig = px.timeline(
-        df_calendar,
-        x_start="data_cutoff_date",
-        x_end="rebalance_date",
-        y="type",
-        color="type",
-        title="📅 Upcoming Rebalance Schedule",
-        hover_data=['rebalance_date_str', 'data_cutoff_str']
-    )
-    
-    fig.update_layout(
-        height=400,
-        showlegend=True,
-        xaxis_title="Date",
-        yaxis_title="Rebalance Type"
-    )
-    
-    return fig, rebalance_dates
-
 def create_performance_charts(results_df):
-    """Create performance visualization charts"""
-    if results_df.empty:
-        return None
-    
-    # Create subplots
-    fig = make_subplots(
-        rows=2, cols=2,
-        subplot_titles=('Momentum Distribution', 'Volatility vs Score', 'FITP Distribution', 'Top 10 Stocks'),
-        specs=[[{"type": "histogram"}, {"type": "scatter"}],
-               [{"type": "histogram"}, {"type": "bar"}]]
-    )
-    
-    # Momentum distribution
-    fig.add_trace(
-        go.Histogram(x=results_df['Momentum'], name='Momentum', nbinsx=20),
-        row=1, col=1
-    )
-    
-    # Volatility vs Score scatter
-    fig.add_trace(
-        go.Scatter(
-            x=results_df['Volatility'], 
-            y=results_df['Score'],
-            mode='markers+text',
-            text=results_df['Symbol'],
-            textposition="top center",
-            name='Vol vs Score'
-        ),
-        row=1, col=2
-    )
-    
-    # FITP distribution
-    fig.add_trace(
-        go.Histogram(x=results_df['FITP'], name='FITP', nbinsx=20),
-        row=2, col=1
-    )
-    
-    # Top 10 stocks bar chart
-    top_10 = results_df.head(10)
-    fig.add_trace(
-        go.Bar(x=top_10['Symbol'], y=top_10['Score'], name='Top 10 Scores'),
-        row=2, col=2
-    )
-    
-    fig.update_layout(height=800, showlegend=False, title_text="📊 Stock Analysis Dashboard")
-    return fig
+    """Create performance visualization charts - placeholder for future"""
+    # This function kept for future use but simplified
+    return None
 
 def main():
     # Header
@@ -561,18 +497,22 @@ def main():
             with col2:
                 if selected_rebalance is not None:
                     selected_date_info = rebalance_dates[selected_rebalance]
+                    cutoff_date = selected_date_info['data_cutoff_date']
+                    lookback_start = cutoff_date - pd.DateOffset(months=lookback_period)
+                    
                     st.markdown(f"""
                     <div class="metric-card">
-                        <h4>📊 Data Cutoff Date</h4>
-                        <h3>{selected_date_info['data_cutoff_date'].strftime('%Y-%m-%d')}</h3>
-                        <p>Data will be fetched until this date</p>
+                        <h4>📊 Analysis Period</h4>
+                        <p><strong>Data Cutoff:</strong> {cutoff_date.strftime('%Y-%m-%d')}</p>
+                        <p><strong>Lookback Start:</strong> {lookback_start.strftime('%Y-%m-%d')}</p>
+                        <p><strong>Period:</strong> {lookback_period} months</p>
                     </div>
                     """, unsafe_allow_html=True)
             
             # Stock universe selection
             st.subheader("📁 Stock Universe")
             
-            # Default stock list (embedded in code for Streamlit Cloud)
+            # Default stock list (Nifty SmallCap 250 - exactly 250 symbols)
             default_symbols = [
                 "360ONE", "AADHARHFC", "AARTIIND", "AAVAS", "ACE", "ABREL", "ABSLAMC", "ADANIENSOL", "ADANIREALTY", 
                 "AFFLE", "AGARIND", "AGRITECH", "AHLEAST", "AIFL", "AIREN", "AKSHOPTFBR", "ALKYLAMINE", "ALLCARGO", 
@@ -590,7 +530,7 @@ def main():
                 "EIDPARRY", "EIHOTEL", "ELECON", "ELGIEQUIP", "EMAMILTD", "ENDURANCE", "ENGINERSIN", "EQUITAS", 
                 "ERIS", "ESABINDIA", "ESCORTS", "EXIDEIND", "FACT", "FDC", "FEDERALBNK", "FEDFINA", 
                 "FELDVR", "FIEMIND", "FINPIPE", "FIVESTAR", "FORTIS", "FSL", "GALAXYSURF", "GARFIBRES", 
-                "GESHIP", "GET&D", "GICRE", "GILLETTE", "GLAND", "GLAXO", "GLENMARK", "GLOBALVECT", 
+                "GESHIP", "GICRE", "GILLETTE", "GLAND", "GLAXO", "GLENMARK", "GLOBALVECT", 
                 "GNFC", "GODFRYPHLP", "GODREJCP", "GODREJIND", "GODREJPROP", "GPPL", "GRANULES", "GRAPHITE", 
                 "GRASIM", "GREAVESCOT", "GRINDWELL", "GRSE", "GSFC", "GSPL", "GUJALKALI", "GUJGASLTD", 
                 "GULFOILLUB", "HAL", "HAPPSTMNDS", "HATHWAY", "HATSUN", "HAVELLS", "HCG", "HDFCAMC", 
@@ -599,16 +539,16 @@ def main():
                 "IDFC", "IDFCFIRSTB", "IEX", "IFBIND", "IIFL", "INDHOTEL", "INDIACEM", "INDIAMART", 
                 "INDIANB", "INDIGO", "INDOCO", "INDOSTAR", "INDUSINDBK", "INDUSTOWER", "INFIBEAM", "INFY", 
                 "INGERRAND", "INOXLEISUR", "INSPIRISYS", "INTELLECT", "IOB", "IOLCP", "IONEXCHANG", "IRCON", 
-                "IRFC", "ITC", "ITI", "J&KBANK", "JBCHEPHARM", "JKCEMENT", "JKLAKSHMI", "JKPAPER", 
+                "IRFC", "ITC", "ITI", "JBCHEPHARM", "JKCEMENT", "JKLAKSHMI", "JKPAPER", 
                 "JMFINANCIL", "JSL", "JSWENERGY", "JSWINFRA", "JUBLFOOD", "JUBLPHARMA", "JUSTDIAL", "JYOTHYLAB", 
                 "KAJARIACER", "KALPATPOWR", "KALYANKJIL", "KAMATHOTEL", "KANSAINER", "KEC", "KEI", "KFINTECH", 
                 "KIMS", "KIRLOSENG", "KIRLOSIND", "KNRCON", "KOLTEPATIL", "KRBL", "KPITTECH", "KSBL", 
                 "KSB", "LAOPALA", "LATENTVIEW", "LAXMIMACH", "LCCINFOTEC", "LEMONTREE", "LEUCINE", "LGBBROSLTD", 
                 "LICI", "LICHSGFIN", "LINDEINDIA", "LLOYDSME", "LT", "LTF", "LTTS", "LUPIN", 
-                "LUXIND", "LXCHEM", "LYKALABS", "M&M", "M&MFIN", "MAHABANK", "MAHLOG", "MANAPPURAM", 
-                "MARICO", "MARUTI", "MASTEK", "MAXHEALTH", "MAZAGON", "MCDOWELL-N", "MCX", "MEDPLUS", 
+                "LUXIND", "LXCHEM", "LYKALABS", "MAHABANK", "MAHLOG", "MANAPPURAM", 
+                "MARICO", "MARUTI", "MASTEK", "MAXHEALTH", "MAZAGON", "MCX", "MEDPLUS", 
                 "METROBRAND", "MFSL", "MGL", "MHRIL", "MIDHANI", "MMTC", "MOIL", "MOTHERSON", 
-                "MPHASIS", "MRF", "MSUMI", "MTARTECH", "MUTHOOTFIN", "NAM-INDIA", "NATCOPHARM", "NAUKRI", 
+                "MPHASIS", "MRF", "MSUMI", "MTARTECH", "MUTHOOTFIN", "NATCOPHARM", "NAUKRI", 
                 "NAVINFLUOR", "NBCC", "NCC", "NESTLEIND", "NETWEB", "NEWGEN", "NH", "NHPC", 
                 "NIACL", "NIITLTD", "NMDC", "NOCIL", "NSLNISP", "NTPC", "NUVOCO", "NYKAA", 
                 "OBEROIRLTY", "OFSS", "OIL", "ONGC", "PANATONE", "PATANJALI", "PAYTM", "PB", 
@@ -638,7 +578,7 @@ def main():
             )
             
             if stock_source == "📈 Default Nifty SmallCap 250":
-                symbols = default_symbols
+                symbols = default_symbols[:250]  # Ensure exactly 250 stocks
                 st.success(f"✅ Using Nifty SmallCap 250 list ({len(symbols)} symbols)")
                 
                 # Show sample stocks
@@ -648,6 +588,10 @@ def main():
                     for i, symbol in enumerate(symbols):
                         with cols[i % 5]:
                             st.write(f"• {symbol}")
+                            
+                # Verification message
+                if len(default_symbols) != 250:
+                    st.warning(f"⚠️ Stock list contains {len(default_symbols)} symbols, trimmed to 250")
                 
             elif stock_source == "📁 Upload Custom List":
                 uploaded_file = st.file_uploader("Upload CSV with 'Symbol' column", type="csv")
@@ -688,6 +632,20 @@ def main():
                 if selected_rebalance is not None:
                     selected_date_info = rebalance_dates[selected_rebalance]
                     cutoff_date = selected_date_info['data_cutoff_date']
+                    
+                    # Warning about refresh
+                    st.warning("⚠️ **Important:** Do not refresh the page during scanning! This process may take 5-10 minutes for 250+ stocks.")
+                    
+                    # Show calculation period details
+                    lookback_start = cutoff_date - pd.DateOffset(months=lookback_period)
+                    
+                    st.info(f"""
+                    📊 **Analysis Details:**
+                    - **Rebalance Date:** {selected_date_info['rebalance_date'].strftime('%Y-%m-%d')}
+                    - **Data Cutoff:** {cutoff_date.strftime('%Y-%m-%d')} (last trading day before rebalance)
+                    - **Lookback Period:** {lookback_period} months ({lookback_start.strftime('%Y-%m-%d')} to {cutoff_date.strftime('%Y-%m-%d')})
+                    - **Strategy:** {strategy.title()}
+                    """)
                     
                     try:
                         results = st.session_state.scanner.scan_stocks(
@@ -785,10 +743,6 @@ def main():
     with tab2:
         st.subheader("📅 Rebalance Calendar & Trading Days")
         
-        # Create and display calendar
-        calendar_fig, rebalance_dates = create_rebalance_calendar()
-        st.plotly_chart(calendar_fig, use_container_width=True)
-        
         # Detailed rebalance schedule
         st.subheader("📋 Detailed Schedule")
         schedule_df = pd.DataFrame(rebalance_dates)
@@ -817,113 +771,29 @@ def main():
     
     with tab3:
         st.subheader("📊 Analytics Dashboard")
+        st.info("📈 Analytics features will be available here in future updates!")
         
-        if hasattr(st.session_state, 'results_df') and not st.session_state.results_df.empty:
-            # Scan summary metrics
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                avg_momentum = st.session_state.results_df['Momentum'].mean()
-                st.markdown(f"""
-                <div class="metric-card">
-                    <h4>📈 Avg Momentum</h4>
-                    <h3>{avg_momentum:.4f}</h3>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            with col2:
-                avg_volatility = st.session_state.results_df['Volatility'].mean()
-                st.markdown(f"""
-                <div class="metric-card">
-                    <h4>📊 Avg Volatility</h4>
-                    <h3>{avg_volatility:.4f}</h3>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            with col3:
-                top_score = st.session_state.results_df['Score'].max()
-                st.markdown(f"""
-                <div class="metric-card">
-                    <h4>🏆 Top Score</h4>
-                    <h3>{top_score:.4f}</h3>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            with col4:
-                positive_momentum = (st.session_state.results_df['Momentum'] > 0).sum()
-                st.markdown(f"""
-                <div class="metric-card">
-                    <h4>📈 Positive Momentum</h4>
-                    <h3>{positive_momentum}/{len(st.session_state.results_df)}</h3>
-                </div>
-                """, unsafe_allow_html=True)
-            
-            # Performance charts
-            perf_fig = create_performance_charts(st.session_state.results_df)
-            if perf_fig:
-                st.plotly_chart(perf_fig, use_container_width=True)
-            
-            # Scan information
-            if hasattr(st.session_state, 'scan_info'):
-                st.subheader("🔍 Scan Information")
-                scan_info = st.session_state.scan_info
-                
-                info_col1, info_col2 = st.columns(2)
-                with info_col1:
-                    st.markdown(f"""
-                    **📅 Data Cutoff Date:** {scan_info['cutoff_date'].strftime('%Y-%m-%d')}  
-                    **📈 Rebalance Date:** {scan_info['rebalance_date'].strftime('%Y-%m-%d')}  
-                    **🎯 Strategy Used:** {scan_info['strategy'].title()}
-                    """)
-                
-                with info_col2:
-                    st.markdown(f"""
-                    **📊 Total Symbols Scanned:** {scan_info['total_symbols']}  
-                    **🏆 Top Stocks Selected:** {len(st.session_state.results_df)}  
-                    **⏰ Scan Completed:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-                    """)
-            
-            # Export options
-            st.subheader("📤 Export Options")
-            export_col1, export_col2, export_col3 = st.columns(3)
-            
-            with export_col1:
-                if st.button("📊 Export for Excel"):
-                    excel_data = st.session_state.results_df.copy()
-                    excel_data.index = range(1, len(excel_data) + 1)
-                    st.dataframe(excel_data)
-            
-            with export_col2:
-                if st.button("📈 Create Summary Report"):
-                    summary_text = f"""
-# Stock Scanner Report
-                    
-**Scan Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-**Data Cutoff:** {st.session_state.scan_info['cutoff_date'].strftime('%Y-%m-%d')}
-**Strategy:** {st.session_state.scan_info['strategy'].title()}
-
-## Top 5 Recommendations:
-{chr(10).join([f"{i+1}. {row['Symbol']} (Score: {row['Score']:.4f})" for i, row in st.session_state.results_df.head().iterrows()])}
-
-## Statistics:
-- Average Momentum: {st.session_state.results_df['Momentum'].mean():.4f}
-- Average Volatility: {st.session_state.results_df['Volatility'].mean():.4f}
-- Stocks with Positive Momentum: {(st.session_state.results_df['Momentum'] > 0).sum()}/{len(st.session_state.results_df)}
-                    """
-                    st.download_button(
-                        label="📥 Download Report",
-                        data=summary_text,
-                        file_name=f"stock_report_{datetime.now().strftime('%Y%m%d')}.md",
-                        mime="text/markdown"
-                    )
-            
-            with export_col3:
-                if st.button("🔄 Clear Results"):
-                    if 'results_df' in st.session_state:
-                        del st.session_state.results_df
-                    if 'scan_info' in st.session_state:
-                        del st.session_state.scan_info
-                    st.rerun()
+        # Placeholder for future analytics
+        st.markdown("""
+        **Coming Soon:**
+        - Performance metrics and charts
+        - Stock correlation analysis  
+        - Sector-wise breakdown
+        - Historical backtest results
+        - Risk metrics dashboard
+        
+        For now, focus on the Scanner tab for stock selection.
+        """)
+        
+        # Show sample placeholder
+        if st.button("📊 Preview Analytics (Demo)"):
+            sample_data = {
+                "Metric": ["Total Stocks Analyzed", "Avg Momentum", "Top Score", "Positive Momentum %"],
+                "Value": ["250", "0.1234", "5.6789", "60%"]
+            }
+            sample_df = pd.DataFrame(sample_data)
+            st.dataframe(sample_df, use_container_width=True)
+            st.caption("*This is sample data - real analytics coming soon!")
         
         else:
             st.markdown('<div class="info-box">📊 Run a stock scan first to see analytics</div>', unsafe_allow_html=True)
