@@ -107,9 +107,9 @@ TIMEZONE = pytz.timezone('Asia/Kolkata')
 
 # GitHub Configuration - Update these with your actual values
 GITHUB_CONFIG = {
-    "username": "YOUR_GITHUB_USERNAME",  # Replace with your GitHub username
-    "repo_name": "stock-scanner-data",
-    "data_repo_path": "../stock-scanner-data"  # Adjust path as needed
+    "username": "hspatel1312",  # Replace with your GitHub username
+    "repo_name": "stock-scanner",
+    "data_repo_path": "../stock-scanner"  # Adjust path as needed
 }
 
 class GitHubIntegration:
