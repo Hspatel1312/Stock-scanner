@@ -107,10 +107,29 @@ TIMEZONE = pytz.timezone('Asia/Kolkata')
 
 # GitHub Configuration - SAME REPOSITORY VERSION
 # GitHub Configuration - SAME REPOSITORY VERSION
+# GitHub Configuration - SMART PATH DETECTION
+def get_repo_path():
+    """Dynamically detect the repository path"""
+    current = Path.cwd()
+    
+    # Check if we're in a Codespaces environment
+    if "/workspaces/" in str(current):
+        # Codespaces - use the specific path
+        codespaces_path = Path("/workspaces/Stock-scanner")
+        if codespaces_path.exists() and (codespaces_path / ".git").exists():
+            return str(codespaces_path)
+    
+    # Check if current directory is the repo
+    if (current / ".git").exists():
+        return str(current)
+    
+    # Fallback to current directory
+    return str(current)
+
 GITHUB_CONFIG = {
     "username": "Hspatel1312",
     "repo_name": "Stock-scanner",
-    "data_repo_path": "/workspaces/Stock-scanner",  # This is correct
+    "data_repo_path": get_repo_path(),  # Dynamic path detection
     "data_folder": "data"
 }
 
