@@ -105,8 +105,6 @@ FYERS_CONFIG = {
 CACHE_FILE = "stock_data_cache.pkl"
 TIMEZONE = pytz.timezone('Asia/Kolkata')
 
-# GitHub Configuration - SAME REPOSITORY VERSION
-# GitHub Configuration - SAME REPOSITORY VERSION
 # GitHub Configuration - SMART PATH DETECTION
 def get_repo_path():
     """Dynamically detect the repository path"""
@@ -213,29 +211,29 @@ __pycache__/
                 
                 # Configure git user if not set (for Streamlit Cloud)
                 subprocess.run(["git", "config", "user.email", "streamlit-app@example.com"], 
-                            capture_output=True, timeout=10)
+                             capture_output=True, timeout=10)
                 subprocess.run(["git", "config", "user.name", "Streamlit App"], 
-                            capture_output=True, timeout=10)
+                             capture_output=True, timeout=10)
                 
                 # Git operations - add files from data folder
                 add_result = subprocess.run(["git", "add", f"data/{filename}"], 
-                                        check=True, capture_output=True, timeout=30)
+                                          check=True, capture_output=True, timeout=30)
                 subprocess.run(["git", "add", f"data/{filename.replace('.csv', '_metadata.json')}"], 
-                            check=True, capture_output=True, timeout=30)
+                             check=True, capture_output=True, timeout=30)
                 
                 # Check if there are changes to commit
                 diff_result = subprocess.run(["git", "diff", "--cached", "--quiet"], 
-                                        capture_output=True, timeout=30)
+                                           capture_output=True, timeout=30)
                 if diff_result.returncode == 0:
                     return True, f"File {filename} already up to date (no changes to commit)"
                 
                 # Commit changes
                 commit_result = subprocess.run(["git", "commit", "-m", commit_message], 
-                                            check=True, capture_output=True, timeout=30)
+                                             check=True, capture_output=True, timeout=30)
                 
                 # Push changes
                 push_result = subprocess.run(["git", "push"], 
-                                        check=True, capture_output=True, timeout=60)
+                                           check=True, capture_output=True, timeout=60)
                 
                 return True, f"Successfully {'replaced' if metadata.get('replaced_existing') else 'added'} {filename} on GitHub"
             
@@ -982,6 +980,17 @@ def main():
                                 "Symbol", "Momentum", "Volatility", "FITP", "Score"
                             ])
                             
+                            # ✅ IMPORTANT: Store in session state to persist across button clicks
+                            st.session_state.results_df = results_df
+                            st.session_state.scan_info = {
+                                "cutoff_date": cutoff_date,
+                                "rebalance_date": selected_date_info['rebalance_date'],
+                                "total_symbols": len(symbols),
+                                "strategy": strategy,
+                                "completed": True  # Add this flag
+                            }
+                            st.session_state.scan_completed = True  # Add this flag
+                            
                             # Format for display
                             display_df = results_df.copy()
                             display_df["Momentum"] = display_df["Momentum"].apply(lambda x: f"{x:.4f}")
@@ -992,123 +1001,6 @@ def main():
                             
                             st.dataframe(display_df, use_container_width=True)
                             
-                            # Store results for other tabs
-                            st.session_state.results_df = results_df
-                            st.session_state.scan_info = {
-                                "cutoff_date": cutoff_date,
-                                "rebalance_date": selected_date_info['rebalance_date'],
-                                "total_symbols": len(symbols),
-                                "strategy": strategy
-                            }
-                            
-                            # GitHub Integration Section
-                            st.subheader("🔗 GitHub Integration")
-                            
-                            if 'github_integration' not in st.session_state:
-                                st.session_state.github_integration = GitHubIntegration()
-                            
-                            col1, col2, col3 = st.columns(3)
-                            
-                            # In the GitHub Integration Section, replace the push button code:
-
-                            with col1:
-                                # Generate timestamped filename
-                                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                                github_filename = f"stock_scan_{cutoff_date.strftime('%Y%m%d')}_{strategy}_{timestamp}.csv"
-                                
-                                if st.button("📤 Push to GitHub", type="primary"):
-                                    with st.spinner("Pushing to GitHub..."):
-                                        try:
-                                            success, message = st.session_state.github_integration.push_csv_to_github(
-                                                results_df, 
-                                                github_filename,
-                                                f"Stock scan results - {strategy} strategy - {cutoff_date.strftime('%Y-%m-%d')}"
-                                            )
-                                            
-                                            if success:
-                                                st.success(f"✅ {message}")
-                                                
-                                                # Display access URLs
-                                                raw_url = st.session_state.github_integration.get_csv_url(github_filename, raw=True)
-                                                github_url = st.session_state.github_integration.get_csv_url(github_filename, raw=False)
-                                                
-                                                st.session_state.latest_csv_url = raw_url
-                                                st.session_state.latest_github_url = github_url
-                                                st.session_state.latest_filename = github_filename
-                                                
-                                                # Show immediate feedback
-                                                st.balloons()
-                                                
-                                            else:
-                                                st.error(f"❌ {message}")
-                                                
-                                        except Exception as e:
-                                            st.error(f"❌ Unexpected error: {str(e)}")
-
-                            with col2:
-                                # Always push latest results (this WILL replace existing file)
-                                latest_filename = "latest_stock_scan.csv"
-                                if st.button("🔄 Update Latest"):
-                                    with st.spinner("Updating latest file..."):
-                                        try:
-                                            success, message = st.session_state.github_integration.push_csv_to_github(
-                                                results_df, 
-                                                latest_filename,
-                                                f"Update latest scan - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-                                            )
-                                            
-                                            if success:
-                                                st.success(f"✅ {message}")
-                                                latest_url = st.session_state.github_integration.get_csv_url(latest_filename, raw=True)
-                                                st.session_state.latest_csv_url = latest_url
-                                                st.session_state.latest_filename = latest_filename
-                                                st.balloons()
-                                            else:
-                                                st.error(f"❌ {message}")
-                                                
-                                        except Exception as e:
-                                            st.error(f"❌ Unexpected error: {str(e)}")
-                            
-                            with col3:
-                                if st.button("📋 Show Access URLs"):
-                                    if hasattr(st.session_state, 'latest_csv_url'):
-                                        st.info("**Direct CSV Access URL:**")
-                                        st.code(st.session_state.latest_csv_url, language="text")
-                                    else:
-                                        st.warning("Push to GitHub first to get URLs")
-                            
-                            # Display current URLs if available
-                            if hasattr(st.session_state, 'latest_csv_url'):
-                                st.subheader("🌐 Access URLs")
-                                
-                                url_col1, url_col2 = st.columns(2)
-                                
-                                with url_col1:
-                                    st.markdown("**Raw CSV URL (for other apps):**")
-                                    st.code(st.session_state.latest_csv_url, language="text")
-                                    
-                                    # Test URL
-                                    if st.button("🧪 Test URL"):
-                                        try:
-                                            response = requests.get(st.session_state.latest_csv_url, timeout=10)
-                                            if response.status_code == 200:
-                                                st.success("✅ URL is accessible")
-                                                lines = response.text.split('\n')[:3]
-                                                st.text("Preview:")
-                                                for line in lines:
-                                                    st.text(line)
-                                            else:
-                                                st.error(f"❌ URL returned status code: {response.status_code}")
-                                        except Exception as e:
-                                            st.error(f"❌ Error testing URL: {str(e)}")
-                                
-                                with url_col2:
-                                    if hasattr(st.session_state, 'latest_github_url'):
-                                        st.markdown("**GitHub View URL:**")
-                                        st.code(st.session_state.latest_github_url, language="text")
-                                        
-                                        if st.button("🔗 Open in GitHub"):
-                                            st.markdown(f"[View file on GitHub]({st.session_state.latest_github_url})")
                         else:
                             st.warning("⚠️ No stocks found matching the criteria")
                             
@@ -1116,6 +1008,135 @@ def main():
                         st.error(f"❌ Error during scan: {str(e)}")
                 else:
                     st.warning("Please select a rebalance date")
+    
+    # GitHub Integration - MOVED OUTSIDE the if results block
+    # Show GitHub Integration if we have completed scan results
+    if hasattr(st.session_state, 'scan_completed') and st.session_state.scan_completed:
+        st.subheader("🔗 GitHub Integration")
+        
+        # Debug information
+        st.write(f"**Debug Info:**")
+        st.write(f"- Scan completed: {st.session_state.scan_completed}")
+        st.write(f"- Results available: {hasattr(st.session_state, 'results_df')}")
+        if hasattr(st.session_state, 'results_df'):
+            st.write(f"- Results rows: {len(st.session_state.results_df)}")
+        
+        if 'github_integration' not in st.session_state:
+            st.session_state.github_integration = GitHubIntegration()
+        
+        # Get the scan info from session state
+        if hasattr(st.session_state, 'scan_info'):
+            scan_info = st.session_state.scan_info
+            cutoff_date = scan_info['cutoff_date']
+            strategy = scan_info['strategy']
+            results_df = st.session_state.results_df
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                # Generate timestamped filename
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                github_filename = f"stock_scan_{cutoff_date.strftime('%Y%m%d')}_{strategy}_{timestamp}.csv"
+                
+                st.write(f"**Will create file:** `{github_filename}`")
+                
+                if st.button("📤 Push to GitHub", type="primary", key="push_github_persistent"):
+                    st.write("🔵 Button clicked!")
+                    
+                    with st.spinner("Pushing to GitHub..."):
+                        try:
+                            success, message = st.session_state.github_integration.push_csv_to_github(
+                                results_df, 
+                                github_filename,
+                                f"Stock scan results - {strategy} strategy - {cutoff_date.strftime('%Y-%m-%d')}"
+                            )
+                            
+                            if success:
+                                st.success(f"✅ {message}")
+                                raw_url = st.session_state.github_integration.get_csv_url(github_filename, raw=True)
+                                st.session_state.latest_csv_url = raw_url
+                                st.session_state.latest_filename = github_filename
+                                st.balloons()
+                            else:
+                                st.error(f"❌ {message}")
+                                
+                        except Exception as e:
+                            st.error(f"❌ Exception: {str(e)}")
+                            import traceback
+                            st.code(traceback.format_exc())
+            
+            with col2:
+                latest_filename = "latest_stock_scan.csv"
+                if st.button("🔄 Update Latest", key="update_latest_persistent"):
+                    st.write("🔵 Update Latest clicked!")
+                    
+                    with st.spinner("Updating latest file..."):
+                        try:
+                            success, message = st.session_state.github_integration.push_csv_to_github(
+                                results_df, 
+                                latest_filename,
+                                f"Update latest scan - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                            )
+                            
+                            if success:
+                                st.success(f"✅ {message}")
+                                latest_url = st.session_state.github_integration.get_csv_url(latest_filename, raw=True)
+                                st.session_state.latest_csv_url = latest_url
+                                st.session_state.latest_filename = latest_filename
+                                st.balloons()
+                            else:
+                                st.error(f"❌ {message}")
+                                
+                        except Exception as e:
+                            st.error(f"❌ Exception: {str(e)}")
+                            import traceback
+                            st.code(traceback.format_exc())
+            
+            with col3:
+                if st.button("🔄 Clear Scan", key="clear_scan"):
+                    # Clear the scan results
+                    if 'scan_completed' in st.session_state:
+                        del st.session_state.scan_completed
+                    if 'results_df' in st.session_state:
+                        del st.session_state.results_df
+                    if 'scan_info' in st.session_state:
+                        del st.session_state.scan_info
+                    st.success("Scan results cleared!")
+                    st.rerun()
+            
+            # Display current URLs if available
+            if hasattr(st.session_state, 'latest_csv_url'):
+                st.subheader("🌐 Access URLs")
+                
+                url_col1, url_col2 = st.columns(2)
+                
+                with url_col1:
+                    st.markdown("**Raw CSV URL (for other apps):**")
+                    st.code(st.session_state.latest_csv_url, language="text")
+                    
+                    # Test URL
+                    if st.button("🧪 Test URL", key="test_url"):
+                        try:
+                            response = requests.get(st.session_state.latest_csv_url, timeout=10)
+                            if response.status_code == 200:
+                                st.success("✅ URL is accessible")
+                                lines = response.text.split('\n')[:3]
+                                st.text("Preview:")
+                                for line in lines:
+                                    st.text(line)
+                            else:
+                                st.error(f"❌ URL returned status code: {response.status_code}")
+                        except Exception as e:
+                            st.error(f"❌ Error testing URL: {str(e)}")
+                
+                with url_col2:
+                    if hasattr(st.session_state, 'latest_filename'):
+                        github_url = st.session_state.github_integration.get_csv_url(st.session_state.latest_filename, raw=False)
+                        st.markdown("**GitHub View URL:**")
+                        st.code(github_url, language="text")
+                        
+                        if st.button("🔗 Open in GitHub", key="open_github"):
+                            st.markdown(f"[View file on GitHub]({github_url})")
     
     with tab2:
         st.subheader("📅 Rebalance Calendar & Trading Days")
@@ -1275,6 +1296,7 @@ def main():
         - **Visual Analytics:** Interactive charts and performance metrics
         - **GitHub Integration:** Automatic CSV upload with direct URL access
         - **Cross-Platform Access:** URLs work with JavaScript, Python, Java, and more
+        - **Session Persistence:** Scan results persist across page refreshes
         
         ### 🔗 GitHub Integration Benefits
         - **Automatic Upload:** Push CSV files directly to GitHub
@@ -1282,6 +1304,7 @@ def main():
         - **Version Control:** All scans are tracked with timestamps
         - **Global Accessibility:** Access your data from anywhere
         - **API-like Access:** Use GitHub as a simple data API
+        - **File Replacement:** Automatically overwrites existing files
         
         ### 📊 Data Sources
         - **Market Data:** Fyers API (real-time and historical)
@@ -1303,6 +1326,7 @@ def main():
         - Use the "Update Latest" feature for consistent file names
         - Test URLs before integrating with other applications
         - Monitor the rebalance calendar for optimal timing
+        - Use "Clear Scan" to reset and start fresh
         
         ### 🔒 Security & Privacy
         - Authentication tokens are temporary and not stored
@@ -1317,9 +1341,16 @@ def main():
         - Consider market conditions when interpreting results
         - Keep your GitHub repository organized with clear naming conventions
         
+        ### 🆕 Latest Updates (v3.1)
+        - **Session State Management:** Scan results persist across button clicks
+        - **Improved Error Handling:** Better debugging and error messages
+        - **Enhanced GitHub Integration:** Automatic file replacement and URL generation
+        - **Debug Information:** Real-time status updates during operations
+        - **Cross-Platform URLs:** Direct access for JavaScript, Python, Java applications
+        
         ---
         
-        **Version:** 3.0 Pro with GitHub Integration | **Last Updated:** January 2025
+        **Version:** 3.1 Pro with Enhanced Session Management | **Last Updated:** January 2025
         
         *Built with ❤️ for systematic momentum investing and seamless data integration*
         """)
