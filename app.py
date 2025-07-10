@@ -11,6 +11,9 @@ import requests
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import subprocess
+import json
+from pathlib import Path
 
 # Configure the page
 st.set_page_config(
@@ -66,6 +69,14 @@ st.markdown("""
         margin: 1rem 0;
     }
     
+    .github-box {
+        background: linear-gradient(135deg, #24292e 0%, #586069 100%);
+        padding: 1rem;
+        border-radius: 10px;
+        color: white;
+        margin: 1rem 0;
+    }
+    
     .stButton > button {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
@@ -93,6 +104,142 @@ FYERS_CONFIG = {
 # Default file paths
 CACHE_FILE = "stock_data_cache.pkl"
 TIMEZONE = pytz.timezone('Asia/Kolkata')
+
+# GitHub Configuration - Update these with your actual values
+GITHUB_CONFIG = {
+    "username": "YOUR_GITHUB_USERNAME",  # Replace with your GitHub username
+    "repo_name": "stock-scanner-data",
+    "data_repo_path": "../stock-scanner-data"  # Adjust path as needed
+}
+
+class GitHubIntegration:
+    def __init__(self, repo_path=None):
+        self.repo_path = Path(repo_path or GITHUB_CONFIG["data_repo_path"])
+        self.username = GITHUB_CONFIG["username"]
+        self.repo_name = GITHUB_CONFIG["repo_name"]
+        self.ensure_repo_exists()
+    
+    def ensure_repo_exists(self):
+        """Check if the data repository exists"""
+        if not self.repo_path.exists():
+            st.warning(f"⚠️ Data repository not found at {self.repo_path}")
+            st.info("Please run the setup commands in your Codespaces terminal first.")
+            return False
+        return True
+    
+    def push_csv_to_github(self, df, filename, commit_message=None):
+        """Push CSV file to GitHub repository"""
+        try:
+            if not self.ensure_repo_exists():
+                return False, "Data repository not found. Please set up the repository first."
+            
+            # Save CSV to the data repository
+            csv_path = self.repo_path / filename
+            df.to_csv(csv_path, index=False)
+            
+            # Create metadata file
+            metadata = {
+                "filename": filename,
+                "timestamp": datetime.now().isoformat(),
+                "rows": len(df),
+                "columns": list(df.columns),
+                "scan_date": datetime.now().strftime("%Y-%m-%d"),
+                "generated_by": "Fyers Stock Scanner Pro",
+                "file_size_kb": round(csv_path.stat().st_size / 1024, 2)
+            }
+            
+            metadata_path = self.repo_path / f"{filename.replace('.csv', '_metadata.json')}"
+            with open(metadata_path, 'w') as f:
+                json.dump(metadata, f, indent=2)
+            
+            # Git operations
+            if commit_message is None:
+                commit_message = f"Update {filename} - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            
+            # Change to repo directory and commit
+            original_cwd = Path.cwd()
+            os.chdir(self.repo_path)
+            
+            try:
+                # Check if git repo is initialized
+                result = subprocess.run(["git", "status"], capture_output=True, text=True)
+                if result.returncode != 0:
+                    return False, "Not a git repository. Please initialize the repository first."
+                
+                # Git operations
+                subprocess.run(["git", "add", filename], check=True, capture_output=True)
+                subprocess.run(["git", "add", f"{filename.replace('.csv', '_metadata.json')}"], check=True, capture_output=True)
+                
+                # Check if there are changes to commit
+                result = subprocess.run(["git", "diff", "--cached", "--quiet"], capture_output=True)
+                if result.returncode == 0:
+                    return True, f"No changes to commit for {filename}"
+                
+                subprocess.run(["git", "commit", "-m", commit_message], check=True, capture_output=True)
+                subprocess.run(["git", "push"], check=True, capture_output=True)
+                
+                return True, f"Successfully pushed {filename} to GitHub"
+            
+            except subprocess.CalledProcessError as e:
+                error_msg = f"Git operation failed: {e}"
+                if e.stderr:
+                    error_msg += f" - {e.stderr.decode()}"
+                return False, error_msg
+            
+            finally:
+                os.chdir(original_cwd)
+                
+        except Exception as e:
+            return False, f"Error pushing to GitHub: {str(e)}"
+    
+    def get_csv_url(self, filename, raw=True):
+        """Get direct URL to CSV file"""
+        if raw:
+            return f"https://raw.githubusercontent.com/{self.username}/{self.repo_name}/main/{filename}"
+        else:
+            return f"https://github.com/{self.username}/{self.repo_name}/blob/main/{filename}"
+    
+    def get_repo_status(self):
+        """Get repository status information"""
+        try:
+            if not self.ensure_repo_exists():
+                return {"status": "not_found", "message": "Repository not found"}
+            
+            original_cwd = Path.cwd()
+            os.chdir(self.repo_path)
+            
+            try:
+                # Check git status
+                result = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, check=True)
+                has_changes = len(result.stdout.strip()) > 0
+                
+                # Get last commit info
+                result = subprocess.run(["git", "log", "-1", "--format=%H|%s|%cd"], capture_output=True, text=True, check=True)
+                if result.stdout:
+                    commit_hash, commit_msg, commit_date = result.stdout.strip().split("|", 2)
+                    last_commit = {
+                        "hash": commit_hash[:8],
+                        "message": commit_msg,
+                        "date": commit_date
+                    }
+                else:
+                    last_commit = None
+                
+                return {
+                    "status": "ok",
+                    "has_changes": has_changes,
+                    "last_commit": last_commit,
+                    "repo_url": f"https://github.com/{self.username}/{self.repo_name}"
+                }
+            
+            except subprocess.CalledProcessError as e:
+                return {"status": "error", "message": f"Git error: {str(e)}"}
+            
+            finally:
+                os.chdir(original_cwd)
+                
+        except Exception as e:
+            return {"status": "error", "message": f"Error checking repository: {str(e)}"}
 
 class EnhancedStockScanner:
     def __init__(self):
@@ -481,6 +628,41 @@ def create_performance_charts(results_df):
     fig.update_layout(height=800, showlegend=False, title_text="📊 Stock Analysis Dashboard")
     return fig
 
+def display_github_status():
+    """Display GitHub repository status"""
+    if 'github_integration' not in st.session_state:
+        st.session_state.github_integration = GitHubIntegration()
+    
+    status = st.session_state.github_integration.get_repo_status()
+    
+    if status["status"] == "ok":
+        st.markdown('<div class="github-box">✅ GitHub Repository Connected</div>', unsafe_allow_html=True)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if status["last_commit"]:
+                st.markdown(f"""
+                **Last Commit:** {status['last_commit']['hash']}  
+                **Message:** {status['last_commit']['message']}  
+                **Date:** {status['last_commit']['date']}
+                """)
+        
+        with col2:
+            if status["has_changes"]:
+                st.warning("📝 Repository has uncommitted changes")
+            else:
+                st.success("✅ Repository is clean")
+        
+        if st.button("🔗 View Repository"):
+            st.markdown(f"[Open Repository]({status['repo_url']})")
+    
+    elif status["status"] == "not_found":
+        st.markdown('<div class="warning-box">⚠️ GitHub repository not found</div>', unsafe_allow_html=True)
+        st.info("Please set up your data repository first using the setup guide.")
+    
+    else:
+        st.markdown(f'<div class="warning-box">❌ Repository Error: {status["message"]}</div>', unsafe_allow_html=True)
+
 def main():
     # Header
     st.markdown('<h1 class="main-header">🚀 Fyers Stock Scanner Pro</h1>', unsafe_allow_html=True)
@@ -517,6 +699,22 @@ def main():
             else:
                 st.warning("Please enter authorization code")
         
+        # GitHub Configuration
+        st.subheader("📂 GitHub Configuration")
+        github_username = st.text_input(
+            "GitHub Username:",
+            value=GITHUB_CONFIG["username"],
+            help="Your GitHub username for the data repository"
+        )
+        
+        if github_username != GITHUB_CONFIG["username"]:
+            GITHUB_CONFIG["username"] = github_username
+            if 'github_integration' in st.session_state:
+                st.session_state.github_integration.username = github_username
+        
+        # Display GitHub status
+        display_github_status()
+        
         # Scanner parameters
         st.subheader("📊 Scanner Parameters")
         strategy = st.selectbox("Strategy:", ["volatility", "fitp", "momentum"], help="Momentum scoring strategy")
@@ -530,7 +728,7 @@ def main():
         st.session_state.lookback_period = lookback_period
     
     # Main content tabs
-    tab1, tab2, tab3, tab4 = st.tabs(["📈 Scanner", "📅 Rebalance Calendar", "📊 Analytics", "ℹ️ About"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 Scanner", "📅 Rebalance Calendar", "📊 Analytics", "🔗 GitHub", "ℹ️ About"])
     
     with tab1:
         if not hasattr(st.session_state, 'authenticated') or not st.session_state.authenticated:
@@ -728,7 +926,103 @@ def main():
                                 "strategy": strategy
                             }
                             
-                            # Download options
+                            # GitHub Integration Section
+                            st.subheader("🔗 GitHub Integration")
+                            
+                            if 'github_integration' not in st.session_state:
+                                st.session_state.github_integration = GitHubIntegration()
+                            
+                            col1, col2, col3 = st.columns(3)
+                            
+                            with col1:
+                                # Generate timestamped filename
+                                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                github_filename = f"stock_scan_{cutoff_date.strftime('%Y%m%d')}_{strategy}_{timestamp}.csv"
+                                
+                                if st.button("📤 Push to GitHub", type="primary"):
+                                    with st.spinner("Pushing to GitHub..."):
+                                        success, message = st.session_state.github_integration.push_csv_to_github(
+                                            results_df, 
+                                            github_filename,
+                                            f"Stock scan results - {strategy} strategy - {cutoff_date.strftime('%Y-%m-%d')}"
+                                        )
+                                        
+                                        if success:
+                                            st.success(message)
+                                            
+                                            # Display access URLs
+                                            raw_url = st.session_state.github_integration.get_csv_url(github_filename, raw=True)
+                                            github_url = st.session_state.github_integration.get_csv_url(github_filename, raw=False)
+                                            
+                                            st.session_state.latest_csv_url = raw_url
+                                            st.session_state.latest_github_url = github_url
+                                            st.session_state.latest_filename = github_filename
+                                            
+                                        else:
+                                            st.error(message)
+                            
+                            with col2:
+                                # Always push latest results
+                                latest_filename = "latest_stock_scan.csv"
+                                if st.button("🔄 Update Latest"):
+                                    with st.spinner("Updating latest file..."):
+                                        success, message = st.session_state.github_integration.push_csv_to_github(
+                                            results_df, 
+                                            latest_filename,
+                                            f"Update latest scan - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                                        )
+                                        
+                                        if success:
+                                            st.success("Latest file updated!")
+                                            latest_url = st.session_state.github_integration.get_csv_url(latest_filename, raw=True)
+                                            st.session_state.latest_csv_url = latest_url
+                                            st.session_state.latest_filename = latest_filename
+                                        else:
+                                            st.error(message)
+                            
+                            with col3:
+                                if st.button("📋 Show Access URLs"):
+                                    if hasattr(st.session_state, 'latest_csv_url'):
+                                        st.info("**Direct CSV Access URL:**")
+                                        st.code(st.session_state.latest_csv_url, language="text")
+                                    else:
+                                        st.warning("Push to GitHub first to get URLs")
+                            
+                            # Display current URLs if available
+                            if hasattr(st.session_state, 'latest_csv_url'):
+                                st.subheader("🌐 Access URLs")
+                                
+                                url_col1, url_col2 = st.columns(2)
+                                
+                                with url_col1:
+                                    st.markdown("**Raw CSV URL (for other apps):**")
+                                    st.code(st.session_state.latest_csv_url, language="text")
+                                    
+                                    # Test URL
+                                    if st.button("🧪 Test URL"):
+                                        try:
+                                            response = requests.get(st.session_state.latest_csv_url, timeout=10)
+                                            if response.status_code == 200:
+                                                st.success("✅ URL is accessible")
+                                                lines = response.text.split('\n')[:3]
+                                                st.text("Preview:")
+                                                for line in lines:
+                                                    st.text(line)
+                                            else:
+                                                st.error(f"❌ URL returned status code: {response.status_code}")
+                                        except Exception as e:
+                                            st.error(f"❌ Error testing URL: {str(e)}")
+                                
+                                with url_col2:
+                                    if hasattr(st.session_state, 'latest_github_url'):
+                                        st.markdown("**GitHub View URL:**")
+                                        st.code(st.session_state.latest_github_url, language="text")
+                                        
+                                        if st.button("🔗 Open in GitHub"):
+                                            st.markdown(f"[View file on GitHub]({st.session_state.latest_github_url})")
+                            
+                            # Download options (traditional)
+                            st.subheader("📥 Traditional Download Options")
                             col1, col2, col3 = st.columns(3)
                             
                             with col1:
@@ -741,11 +1035,11 @@ def main():
                                 )
                             
                             with col2:
-                                # Save for GitHub upload
+                                # Save for manual GitHub upload
                                 results_df.to_csv("latest_results.csv", index=False)
                                 with open("latest_results.csv", "rb") as f:
                                     st.download_button(
-                                        label="📤 For GitHub Upload",
+                                        label="📤 For Manual Upload",
                                         data=f.read(),
                                         file_name="latest_results.csv",
                                         mime="text/csv"
@@ -941,8 +1235,238 @@ def main():
             sample_fig = create_performance_charts(sample_data)
             if sample_fig:
                 st.plotly_chart(sample_fig, use_container_width=True)
-    
+
     with tab4:
+        st.subheader("🔗 GitHub Integration Management")
+        
+        # Initialize GitHub integration
+        if 'github_integration' not in st.session_state:
+            st.session_state.github_integration = GitHubIntegration()
+        
+        # Repository Status
+        st.subheader("📊 Repository Status")
+        status = st.session_state.github_integration.get_repo_status()
+        
+        if status["status"] == "ok":
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.markdown('<div class="success-box">✅ Repository Connected</div>', unsafe_allow_html=True)
+                st.markdown(f"**Repository:** {st.session_state.github_integration.username}/{st.session_state.github_integration.repo_name}")
+                
+                if status["last_commit"]:
+                    st.markdown(f"""
+                    **Last Commit:** {status['last_commit']['hash']}  
+                    **Message:** {status['last_commit']['message']}  
+                    **Date:** {status['last_commit']['date']}
+                    """)
+            
+            with col2:
+                if status["has_changes"]:
+                    st.markdown('<div class="warning-box">📝 Repository has uncommitted changes</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div class="success-box">✅ Repository is clean</div>', unsafe_allow_html=True)
+                
+                if st.button("🔗 Open Repository"):
+                    st.markdown(f"[View Repository]({status['repo_url']})")
+        
+        elif status["status"] == "not_found":
+            st.markdown('<div class="warning-box">⚠️ GitHub repository not found</div>', unsafe_allow_html=True)
+            st.info("Please set up your data repository first.")
+        
+        else:
+            st.markdown(f'<div class="warning-box">❌ Repository Error: {status["message"]}</div>', unsafe_allow_html=True)
+        
+        # Configuration Management
+        st.subheader("⚙️ Configuration")
+        
+        config_col1, config_col2 = st.columns(2)
+        
+        with config_col1:
+            new_username = st.text_input(
+                "GitHub Username:",
+                value=st.session_state.github_integration.username,
+                help="Your GitHub username"
+            )
+            
+            new_repo_name = st.text_input(
+                "Repository Name:",
+                value=st.session_state.github_integration.repo_name,
+                help="Name of your data repository"
+            )
+        
+        with config_col2:
+            new_repo_path = st.text_input(
+                "Repository Path:",
+                value=str(st.session_state.github_integration.repo_path),
+                help="Local path to your data repository"
+            )
+            
+            if st.button("💾 Update Configuration"):
+                st.session_state.github_integration.username = new_username
+                st.session_state.github_integration.repo_name = new_repo_name
+                st.session_state.github_integration.repo_path = Path(new_repo_path)
+                st.success("Configuration updated!")
+                st.rerun()
+        
+        # URL Management
+        st.subheader("🌐 Current URLs")
+        
+        if hasattr(st.session_state, 'latest_filename'):
+            filename = st.session_state.latest_filename
+            raw_url = st.session_state.github_integration.get_csv_url(filename, raw=True)
+            github_url = st.session_state.github_integration.get_csv_url(filename, raw=False)
+            
+            url_col1, url_col2 = st.columns(2)
+            
+            with url_col1:
+                st.markdown("**Raw CSV URL (for other applications):**")
+                st.code(raw_url, language="text")
+                
+                if st.button("📋 Copy Raw URL"):
+                    st.write("Use this URL in your other applications:")
+                    st.code(raw_url)
+            
+            with url_col2:
+                st.markdown("**GitHub View URL:**")
+                st.code(github_url, language="text")
+                
+                if st.button("🔗 Open File on GitHub"):
+                    st.markdown(f"[View file on GitHub]({github_url})")
+            
+            # Test connectivity
+            st.subheader("🧪 Test Connectivity")
+            if st.button("Test Raw URL Access"):
+                with st.spinner("Testing URL..."):
+                    try:
+                        response = requests.get(raw_url, timeout=10)
+                        if response.status_code == 200:
+                            st.success("✅ URL is accessible")
+                            
+                            # Show preview
+                            lines = response.text.split('\n')[:5]
+                            st.text("File Preview:")
+                            for line in lines:
+                                if line.strip():
+                                    st.text(line)
+                        else:
+                            st.error(f"❌ URL returned status code: {response.status_code}")
+                    except Exception as e:
+                        st.error(f"❌ Error accessing URL: {str(e)}")
+        
+        else:
+            st.info("No files have been uploaded to GitHub yet. Run a scan first.")
+        
+        # Integration Examples
+        st.subheader("🔧 Integration Examples")
+        
+        example_tab1, example_tab2, example_tab3 = st.tabs(["JavaScript", "Python", "Java"])
+        
+        with example_tab1:
+            st.markdown("**Fetch CSV data in JavaScript:**")
+            if hasattr(st.session_state, 'latest_filename'):
+                raw_url = st.session_state.github_integration.get_csv_url(st.session_state.latest_filename, raw=True)
+                js_code = f"""
+// Fetch CSV data from GitHub
+fetch('{raw_url}')
+  .then(response => response.text())
+  .then(data => {{
+    console.log('CSV Data:', data);
+    // Parse CSV data here
+    const lines = data.split('\\n');
+    const headers = lines[0].split(',');
+    
+    // Process each row
+    for (let i = 1; i < lines.length; i++) {{
+      const row = lines[i].split(',');
+      const stock = {{}};
+      headers.forEach((header, index) => {{
+        stock[header] = row[index];
+      }});
+      console.log('Stock:', stock);
+    }}
+  }})
+  .catch(error => console.error('Error:', error));
+"""
+                st.code(js_code, language="javascript")
+            else:
+                st.info("Upload a file first to see the example with your actual URL.")
+        
+        with example_tab2:
+            st.markdown("**Read CSV data in Python:**")
+            if hasattr(st.session_state, 'latest_filename'):
+                raw_url = st.session_state.github_integration.get_csv_url(st.session_state.latest_filename, raw=True)
+                python_code = f"""
+import pandas as pd
+import requests
+
+# Read CSV directly from GitHub
+url = '{raw_url}'
+df = pd.read_csv(url)
+
+print("Stock data:")
+print(df.head())
+
+# Access specific columns
+symbols = df['Symbol'].tolist()
+scores = df['Score'].tolist()
+
+print(f"Top stock: {{symbols[0]}} with score: {{scores[0]}}")
+"""
+                st.code(python_code, language="python")
+            else:
+                st.info("Upload a file first to see the example with your actual URL.")
+        
+        with example_tab3:
+            st.markdown("**Read CSV data in Java:**")
+            if hasattr(st.session_state, 'latest_filename'):
+                raw_url = st.session_state.github_integration.get_csv_url(st.session_state.latest_filename, raw=True)
+                java_code = f"""
+import java.net.URL;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
+
+public class StockDataReader {{
+    public static void main(String[] args) {{
+        try {{
+            URL url = new URL("{raw_url}");
+            BufferedReader reader = new BufferedReader(
+                new InputStreamReader(url.openStream())
+            );
+            
+            String line;
+            List<String[]> data = new ArrayList<>();
+            
+            // Read CSV data
+            while ((line = reader.readLine()) != null) {{
+                String[] values = line.split(",");
+                data.add(values);
+            }}
+            
+            // Print headers
+            System.out.println("Headers: " + 
+                String.join(", ", data.get(0)));
+            
+            // Print first few stocks
+            for (int i = 1; i < Math.min(6, data.size()); i++) {{
+                System.out.println("Stock " + i + ": " + 
+                    String.join(", ", data.get(i)));
+            }}
+            
+            reader.close();
+        }} catch (Exception e) {{
+            e.printStackTrace();
+        }}
+    }}
+}}
+"""
+                st.code(java_code, language="java")
+            else:
+                st.info("Upload a file first to see the example with your actual URL.")
+    
+    with tab5:
         st.subheader("ℹ️ About Fyers Stock Scanner Pro")
         
         st.markdown("""
@@ -978,7 +1502,15 @@ def main():
         - **Holiday Awareness:** Built-in 2025 market holiday calendar
         - **Multiple Export Formats:** CSV, Pickle, and summary reports
         - **Visual Analytics:** Interactive charts and performance metrics
-        - **GitHub Integration:** Export-ready files for automated workflows
+        - **GitHub Integration:** Automatic CSV upload with direct URL access
+        - **Cross-Platform Access:** URLs work with JavaScript, Python, Java, and more
+        
+        ### 🔗 GitHub Integration Benefits
+        - **Automatic Upload:** Push CSV files directly to GitHub
+        - **Direct URL Access:** Get raw URLs for immediate use in other applications
+        - **Version Control:** All scans are tracked with timestamps
+        - **Global Accessibility:** Access your data from anywhere
+        - **API-like Access:** Use GitHub as a simple data API
         
         ### 📊 Data Sources
         - **Market Data:** Fyers API (real-time and historical)
@@ -986,21 +1518,25 @@ def main():
         - **Holidays:** NSE holiday calendar for 2025
         
         ### 🚀 Usage Workflow
-        1. **Authenticate** with your Fyers account
-        2. **Select** the next rebalance date
-        3. **Upload** or use default stock list
-        4. **Configure** strategy and parameters
-        5. **Scan** and analyze results
-        6. **Export** for further analysis or automated trading
+        1. **Setup:** Configure GitHub repository in sidebar
+        2. **Authenticate** with your Fyers account
+        3. **Select** the next rebalance date
+        4. **Upload** or use default stock list
+        5. **Configure** strategy and parameters
+        6. **Scan** and analyze results
+        7. **Push to GitHub** for automated access
+        8. **Use URLs** in your other applications
         
         ### ⚡ Performance Tips
         - Data is cached per configuration to speed up subsequent scans
-        - Use the GitHub export feature for automated Java applications
+        - Use the "Update Latest" feature for consistent file names
+        - Test URLs before integrating with other applications
         - Monitor the rebalance calendar for optimal timing
         
         ### 🔒 Security & Privacy
         - Authentication tokens are temporary and not stored
         - All data processing happens locally in your browser session
+        - GitHub integration uses public repositories (recommended for data sharing)
         - No sensitive information is transmitted to external servers
         
         ### 📈 Best Practices
@@ -1008,12 +1544,31 @@ def main():
         - Compare different strategies for validation
         - Monitor consistency across multiple time periods
         - Consider market conditions when interpreting results
+        - Keep your GitHub repository organized with clear naming conventions
+        
+        ### 🛠️ Setup Instructions
+        
+        **Step 1: Create GitHub Repository**
+        ```bash
+        # In Codespaces terminal
+        gh repo create stock-scanner-data --public
+        git clone https://github.com/YOUR_USERNAME/stock-scanner-data.git
+        ```
+        
+        **Step 2: Configure Repository Path**
+        - Update the sidebar configuration with your GitHub username
+        - Ensure the repository path points to your cloned repository
+        
+        **Step 3: Test Integration**
+        - Run a scan and push to GitHub
+        - Verify the URLs are accessible
+        - Test with your target applications
         
         ---
         
-        **Version:** 2.0 Pro | **Last Updated:** January 2025
+        **Version:** 3.0 Pro with GitHub Integration | **Last Updated:** January 2025
         
-        *Built with ❤️ for systematic momentum investing*
+        *Built with ❤️ for systematic momentum investing and seamless data integration*
         """)
         
         # Technical specifications
@@ -1025,20 +1580,41 @@ def main():
             - Pandas for data manipulation
             - Plotly for visualizations
             - PyTZ for timezone handling
+            - Subprocess for Git operations
+            - Requests for URL testing
+            
+            **GitHub Integration:**
+            - Git repository operations
+            - Automatic CSV upload
+            - Metadata generation
+            - URL generation for raw access
+            - Repository status monitoring
             
             **API Limits:**
             - Fyers: 1000 requests per minute
+            - GitHub: 5000 requests per hour (authenticated)
             - Data retention: 2 years historical
             - Cache validity: Per day and configuration
             
             **File Formats Supported:**
             - Input: CSV with 'Symbol' column
-            - Output: CSV, Pickle, Markdown reports
+            - Output: CSV, Pickle, Markdown reports, JSON metadata
+            
+            **URL Format:**
+            - Raw CSV: `https://raw.githubusercontent.com/USERNAME/REPO/main/FILENAME.csv`
+            - GitHub View: `https://github.com/USERNAME/REPO/blob/main/FILENAME.csv`
             
             **Browser Compatibility:**
             - Chrome/Edge 90+
             - Firefox 88+
             - Safari 14+
+            
+            **Integration Support:**
+            - JavaScript (Fetch API)
+            - Python (pandas.read_csv)
+            - Java (URL/BufferedReader)
+            - R (read.csv)
+            - Any HTTP client
             """)
 
 if __name__ == "__main__":
