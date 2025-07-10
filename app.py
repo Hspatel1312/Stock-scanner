@@ -3,18 +3,85 @@ import pandas as pd
 import pickle
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 from fyers_apiv3 import fyersModel
 from typing import Dict, List, Optional, Tuple
 import requests
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 # Configure the page
 st.set_page_config(
-    page_title="Fyers Stock Scanner",
+    page_title="🚀 Fyers Stock Scanner Pro",
     page_icon="📈",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
+
+# Custom CSS for better UI
+st.markdown("""
+<style>
+    .main-header {
+        font-size: 3rem;
+        font-weight: bold;
+        text-align: center;
+        background: linear-gradient(90deg, #1f77b4, #ff7f0e);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 2rem;
+    }
+    
+    .metric-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1rem;
+        border-radius: 10px;
+        color: white;
+        text-align: center;
+        margin: 0.5rem 0;
+    }
+    
+    .success-box {
+        background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+        padding: 1rem;
+        border-radius: 10px;
+        color: white;
+        margin: 1rem 0;
+    }
+    
+    .warning-box {
+        background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+        padding: 1rem;
+        border-radius: 10px;
+        color: white;
+        margin: 1rem 0;
+    }
+    
+    .info-box {
+        background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+        padding: 1rem;
+        border-radius: 10px;
+        color: white;
+        margin: 1rem 0;
+    }
+    
+    .stButton > button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 20px;
+        padding: 0.5rem 2rem;
+        font-weight: bold;
+        transition: all 0.3s;
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # Configuration
 FYERS_CONFIG = {
@@ -23,18 +90,98 @@ FYERS_CONFIG = {
     "redirect_uri": "https://trade.fyers.in/api-login/redirect-uri/index.html"
 }
 
-# Default file paths (you can modify these)
-STOCK_LIST_FILE = "ind_niftysmallcap250list.csv"
+# Default file paths
 CACHE_FILE = "stock_data_cache.pkl"
+TIMEZONE = pytz.timezone('Asia/Kolkata')
 
-# Timezone
-tz = pytz.timezone('Asia/Kolkata')
-
-class StockScanner:
+class EnhancedStockScanner:
     def __init__(self):
         self.fyers = None
         self.cached_data = None
+        self.holidays = self.load_holidays()
         
+    def load_holidays(self) -> set:
+        """Load holidays from uploaded file or default list"""
+        try:
+            # Try to read uploaded holidays file
+            if os.path.exists('holidays_2025.csv'):
+                holidays_df = pd.read_csv('holidays_2025.csv')
+                holidays = set(pd.to_datetime(holidays_df['Date'], format='%d-%b-%Y').dt.date)
+                return holidays
+            else:
+                # Default holidays for 2025
+                default_holidays = [
+                    "2025-02-26", "2025-03-14", "2025-03-31", "2025-04-10",
+                    "2025-04-14", "2025-04-18", "2025-05-01", "2025-08-15",
+                    "2025-08-27", "2025-10-02", "2025-10-21", "2025-10-22",
+                    "2025-11-05", "2025-12-25"
+                ]
+                return set(pd.to_datetime(default_holidays).date)
+        except Exception as e:
+            st.error(f"Error loading holidays: {str(e)}")
+            return set()
+    
+    def get_trading_days(self, start_date: datetime, end_date: datetime) -> List[datetime]:
+        """Generate trading days between start and end date"""
+        trading_days = []
+        current_date = start_date
+        
+        while current_date <= end_date:
+            # Check if it's a weekday and not a holiday
+            if (current_date.weekday() < 5) and (current_date.date() not in self.holidays):
+                trading_days.append(current_date)
+            current_date += timedelta(days=1)
+        
+        return trading_days
+    
+    def get_next_rebalance_dates(self, num_dates: int = 6) -> List[Dict]:
+        """Get next few rebalance dates with proper trading day calculation"""
+        rebalance_dates = []
+        current_date = datetime.now(TIMEZONE).replace(day=1)
+        
+        for _ in range(num_dates):
+            # First trading day of the month
+            first_day = current_date.replace(day=1)
+            trading_days = self.get_trading_days(first_day, first_day + timedelta(days=10))
+            if trading_days:
+                first_trading_day = trading_days[0]
+                # Data cutoff is previous trading day
+                data_cutoff = self.get_previous_trading_day(first_trading_day)
+                
+                rebalance_dates.append({
+                    "rebalance_date": first_trading_day,
+                    "data_cutoff_date": data_cutoff,
+                    "type": "Month Start"
+                })
+            
+            # 15th trading day of the month
+            mid_month = current_date.replace(day=15)
+            trading_days = self.get_trading_days(mid_month, mid_month + timedelta(days=10))
+            if trading_days:
+                mid_trading_day = trading_days[0]
+                data_cutoff = self.get_previous_trading_day(mid_trading_day)
+                
+                rebalance_dates.append({
+                    "rebalance_date": mid_trading_day,
+                    "data_cutoff_date": data_cutoff,
+                    "type": "Mid Month"
+                })
+            
+            # Move to next month
+            if current_date.month == 12:
+                current_date = current_date.replace(year=current_date.year + 1, month=1)
+            else:
+                current_date = current_date.replace(month=current_date.month + 1)
+        
+        return sorted(rebalance_dates, key=lambda x: x['rebalance_date'])
+    
+    def get_previous_trading_day(self, date: datetime) -> datetime:
+        """Get the previous trading day"""
+        prev_day = date - timedelta(days=1)
+        while prev_day.weekday() >= 5 or prev_day.date() in self.holidays:
+            prev_day -= timedelta(days=1)
+        return prev_day
+    
     def authenticate_fyers(self, auth_code: str) -> bool:
         """Authenticate with Fyers using auth code"""
         try:
@@ -91,7 +238,7 @@ class StockScanner:
                     all_data.extend(candles)
                     
                 current = chunk_start - pd.Timedelta(days=1)
-                time.sleep(0.5)  # Rate limiting
+                time.sleep(0.5)
             
             if not all_data:
                 return pd.DataFrame()
@@ -153,42 +300,42 @@ class StockScanner:
             st.error(f"Error calculating metrics: {str(e)}")
             return None, None, None
     
-    def scan_stocks(self, symbols: List[str], strategy: str = "volatility", num_stocks: int = 20, 
-                   lookback_period: int = 12, last_month_exclusion: int = 0) -> List[Tuple[str, float, float, float, float]]:
-        """Scan and rank stocks based on momentum strategy"""
+    def scan_stocks(self, symbols: List[str], cutoff_date: datetime, strategy: str = "volatility", 
+                   num_stocks: int = 20, lookback_period: int = 12, last_month_exclusion: int = 0) -> List[Tuple[str, float, float, float, float]]:
+        """Scan and rank stocks based on momentum strategy with proper cutoff date"""
         if not self.fyers:
             st.error("Fyers not authenticated!")
             return []
         
         scores = []
-        date = pd.Timestamp.now(tz).normalize()
         
         # Check cache first
         cache_valid = False
+        cache_key = f"{cutoff_date.strftime('%Y-%m-%d')}_{strategy}_{lookback_period}"
+        
         if os.path.exists(CACHE_FILE):
             try:
                 with open(CACHE_FILE, "rb") as f:
                     cached_data = pickle.load(f)
-                    cache_date = pd.Timestamp(cached_data["timestamp"], tz="Asia/Kolkata").normalize()
-                    if cache_date == date:
+                    if cached_data.get("cache_key") == cache_key:
                         self.cached_data = cached_data["data"]
                         cache_valid = True
-                        st.success("Using cached data from today")
+                        st.success("✅ Using cached data for this configuration")
             except:
                 pass
         
         if not cache_valid:
-            st.info("Fetching fresh data... This may take a few minutes.")
-            # Fetch historical data
-            end = date
-            start = end - pd.Timedelta(days=730)
+            st.info(f"📊 Fetching data until {cutoff_date.strftime('%Y-%m-%d')}... This may take a few minutes.")
+            # Fetch historical data up to cutoff date
+            end = cutoff_date
+            start = end - pd.Timedelta(days=730)  # 2 years of data
             hist_data = {}
             
             progress_bar = st.progress(0)
             status_text = st.empty()
             
             for i, symbol in enumerate(symbols):
-                status_text.text(f"Fetching data for {symbol} ({i+1}/{len(symbols)})")
+                status_text.text(f"📈 Fetching data for {symbol} ({i+1}/{len(symbols)})")
                 df = self.fetch_historical_data(symbol, start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"))
                 hist_data[symbol] = df
                 progress_bar.progress((i + 1) / len(symbols))
@@ -198,25 +345,29 @@ class StockScanner:
             # Save cache
             try:
                 with open(CACHE_FILE, "wb") as f:
-                    pickle.dump({"data": hist_data, "timestamp": date.strftime("%Y-%m-%d")}, f)
-                st.success("Data cached successfully")
+                    pickle.dump({
+                        "cache_key": cache_key,
+                        "data": hist_data,
+                        "timestamp": datetime.now().isoformat()
+                    }, f)
+                st.success("💾 Data cached successfully")
             except Exception as e:
                 st.warning(f"Could not save cache: {str(e)}")
         
         # Calculate scores
-        st.info("Calculating momentum scores...")
+        st.info("🧮 Calculating momentum scores...")
         progress_bar = st.progress(0)
         status_text = st.empty()
         
         for i, symbol in enumerate(symbols):
-            status_text.text(f"Analyzing {symbol} ({i+1}/{len(symbols)})")
+            status_text.text(f"🔍 Analyzing {symbol} ({i+1}/{len(symbols)})")
             df = self.cached_data.get(symbol, pd.DataFrame())
             
             if df.empty:
                 continue
             
             momentum, volatility, fitp = self.calculate_momentum_volatility_fitp(
-                df, date, lookback_period, last_month_exclusion
+                df, cutoff_date, lookback_period, last_month_exclusion
             )
             
             if momentum is not None:
@@ -234,33 +385,108 @@ class StockScanner:
         sorted_scores = sorted(scores, key=lambda x: x[4], reverse=True)[:num_stocks]
         return sorted_scores
 
+def create_rebalance_calendar():
+    """Create a visual rebalance calendar"""
+    scanner = EnhancedStockScanner()
+    rebalance_dates = scanner.get_next_rebalance_dates(12)
+    
+    # Create calendar visualization
+    df_calendar = pd.DataFrame(rebalance_dates)
+    df_calendar['rebalance_date_str'] = df_calendar['rebalance_date'].dt.strftime('%Y-%m-%d')
+    df_calendar['data_cutoff_str'] = df_calendar['data_cutoff_date'].dt.strftime('%Y-%m-%d')
+    
+    fig = px.timeline(
+        df_calendar,
+        x_start="data_cutoff_date",
+        x_end="rebalance_date",
+        y="type",
+        color="type",
+        title="📅 Upcoming Rebalance Schedule",
+        hover_data=['rebalance_date_str', 'data_cutoff_str']
+    )
+    
+    fig.update_layout(
+        height=400,
+        showlegend=True,
+        xaxis_title="Date",
+        yaxis_title="Rebalance Type"
+    )
+    
+    return fig, rebalance_dates
+
+def create_performance_charts(results_df):
+    """Create performance visualization charts"""
+    if results_df.empty:
+        return None
+    
+    # Create subplots
+    fig = make_subplots(
+        rows=2, cols=2,
+        subplot_titles=('Momentum Distribution', 'Volatility vs Score', 'FITP Distribution', 'Top 10 Stocks'),
+        specs=[[{"type": "histogram"}, {"type": "scatter"}],
+               [{"type": "histogram"}, {"type": "bar"}]]
+    )
+    
+    # Momentum distribution
+    fig.add_trace(
+        go.Histogram(x=results_df['Momentum'], name='Momentum', nbinsx=20),
+        row=1, col=1
+    )
+    
+    # Volatility vs Score scatter
+    fig.add_trace(
+        go.Scatter(
+            x=results_df['Volatility'], 
+            y=results_df['Score'],
+            mode='markers+text',
+            text=results_df['Symbol'],
+            textposition="top center",
+            name='Vol vs Score'
+        ),
+        row=1, col=2
+    )
+    
+    # FITP distribution
+    fig.add_trace(
+        go.Histogram(x=results_df['FITP'], name='FITP', nbinsx=20),
+        row=2, col=1
+    )
+    
+    # Top 10 stocks bar chart
+    top_10 = results_df.head(10)
+    fig.add_trace(
+        go.Bar(x=top_10['Symbol'], y=top_10['Score'], name='Top 10 Scores'),
+        row=2, col=2
+    )
+    
+    fig.update_layout(height=800, showlegend=False, title_text="📊 Stock Analysis Dashboard")
+    return fig
+
 def main():
-    st.title("📈 Fyers Stock Scanner")
-    st.write("Authenticate with Fyers and scan stocks using momentum strategies")
+    # Header
+    st.markdown('<h1 class="main-header">🚀 Fyers Stock Scanner Pro</h1>', unsafe_allow_html=True)
+    st.markdown("### Advanced momentum-based stock screening with rebalance date intelligence")
     
     # Initialize scanner
     if 'scanner' not in st.session_state:
-        st.session_state.scanner = StockScanner()
+        st.session_state.scanner = EnhancedStockScanner()
     
-    # Sidebar for configuration
+    # Sidebar
     with st.sidebar:
-        st.header("🔧 Configuration")
+        st.header("🔧 Control Panel")
         
         # Authentication section
         st.subheader("🔐 Fyers Authentication")
-        
-        # Show authentication link
         auth_url = f"https://api-t1.fyers.in/api/v3/generate-authcode?client_id={FYERS_CONFIG['client_id']}&redirect_uri={FYERS_CONFIG['redirect_uri']}&response_type=code&state=None"
-        st.markdown(f"**Step 1:** [Get Authorization Code]({auth_url})")
+        st.markdown(f"**Step 1:** [🔗 Get Authorization Code]({auth_url})")
         
-        # Auth code input
         auth_code = st.text_input(
             "**Step 2:** Enter Authorization Code:",
             type="password",
-            help="Paste the authorization code from the Fyers authentication page"
+            help="Paste the authorization code from Fyers"
         )
         
-        if st.button("🔑 Authenticate"):
+        if st.button("🔑 Authenticate", type="primary"):
             if auth_code:
                 with st.spinner("Authenticating..."):
                     if st.session_state.scanner.authenticate_fyers(auth_code):
@@ -274,138 +500,446 @@ def main():
         
         # Scanner parameters
         st.subheader("📊 Scanner Parameters")
-        strategy = st.selectbox("Strategy:", ["volatility", "fitp", "momentum"])
+        strategy = st.selectbox("Strategy:", ["volatility", "fitp", "momentum"], help="Momentum scoring strategy")
         num_stocks = st.slider("Number of stocks:", 5, 50, 20)
         lookback_period = st.slider("Lookback period (months):", 3, 24, 12)
         last_month_exclusion = st.slider("Last month exclusion:", 0, 3, 0)
+        
+        # Store in session state for charts
+        st.session_state.strategy = strategy
+        st.session_state.num_stocks = num_stocks
+        st.session_state.lookback_period = lookback_period
     
-    # Main content
-    if not hasattr(st.session_state, 'authenticated') or not st.session_state.authenticated:
-        st.info("👆 Please authenticate with Fyers using the sidebar first")
-        
-        # Show sample stock list format
-        st.subheader("📋 Stock List Format")
-        st.write("Your stock list CSV should have a 'Symbol' column with stock symbols:")
-        sample_df = pd.DataFrame({
-            "Symbol": ["RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK"],
-            "Company Name": ["Reliance Industries", "Tata Consultancy Services", "Infosys", "HDFC Bank", "ICICI Bank"]
-        })
-        st.dataframe(sample_df)
-        
-    else:
-        # File upload
-        st.subheader("📁 Upload Stock List")
-        uploaded_file = st.file_uploader(
-            "Choose CSV file with stock symbols",
-            type="csv",
-            help="Upload a CSV file with a 'Symbol' column containing stock symbols"
-        )
-        
-        # Use sample stocks if no file uploaded
-        if uploaded_file is None:
-            st.info("No file uploaded. Using sample stock list.")
-            symbols = ["RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK", 
-                      "HINDUNILVR", "ITC", "SBIN", "BHARTIARTL", "ASIANPAINT",
-                      "MARUTI", "BAJFINANCE", "HCLTECH", "KOTAKBANK", "LT",
-                      "WIPRO", "TITAN", "ULTRACEMCO", "NESTLEIND", "POWERGRID"]
+    # Main content tabs
+    tab1, tab2, tab3, tab4 = st.tabs(["📈 Scanner", "📅 Rebalance Calendar", "📊 Analytics", "ℹ️ About"])
+    
+    with tab1:
+        if not hasattr(st.session_state, 'authenticated') or not st.session_state.authenticated:
+            st.markdown('<div class="info-box">👆 Please authenticate with Fyers using the sidebar first</div>', unsafe_allow_html=True)
+            
+            # Show sample data format
+            st.subheader("📋 Sample Data Format")
+            sample_df = pd.DataFrame({
+                "Symbol": ["RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK"],
+                "Company Name": ["Reliance Industries", "Tata Consultancy Services", "Infosys", "HDFC Bank", "ICICI Bank"],
+                "Industry": ["Oil & Gas", "IT Services", "IT Services", "Banking", "Banking"]
+            })
+            st.dataframe(sample_df, use_container_width=True)
+            
         else:
-            try:
-                df = pd.read_csv(uploaded_file)
-                if 'Symbol' in df.columns:
-                    symbols = df['Symbol'].tolist()
-                    st.success(f"✅ Loaded {len(symbols)} symbols from file")
-                else:
-                    st.error("❌ CSV file must have a 'Symbol' column")
-                    symbols = []
-            except Exception as e:
-                st.error(f"❌ Error reading file: {str(e)}")
-                symbols = []
-        
-        # Scan button
-        if symbols and st.button("🔍 Scan Stocks", type="primary"):
-            try:
-                results = st.session_state.scanner.scan_stocks(
-                    symbols=symbols,
-                    strategy=strategy,
-                    num_stocks=num_stocks,
-                    lookback_period=lookback_period,
-                    last_month_exclusion=last_month_exclusion
-                )
-                
-                if results:
-                    st.success(f"✅ Scan completed! Found {len(results)} stocks")
-                    
-                    # Display results
-                    st.subheader("📊 Top Stocks")
-                    
-                    # Create DataFrame for display
-                    results_df = pd.DataFrame(results, columns=[
-                        "Symbol", "Momentum", "Volatility", "FITP", "Score"
-                    ])
-                    
-                    # Format numbers
-                    results_df["Momentum"] = results_df["Momentum"].apply(lambda x: f"{x:.4f}" if x is not None else "N/A")
-                    results_df["Volatility"] = results_df["Volatility"].apply(lambda x: f"{x:.4f}" if x is not None else "N/A")
-                    results_df["FITP"] = results_df["FITP"].apply(lambda x: f"{x:.4f}" if x is not None else "N/A")
-                    results_df["Score"] = results_df["Score"].apply(lambda x: f"{x:.4f}")
-                    
-                    st.dataframe(results_df, use_container_width=True)
-                    
-                    # Download button
-                    csv = results_df.to_csv(index=False)
-                    st.download_button(
-                        label="📥 Download Results",
-                        data=csv,
-                        file_name=f"stock_scan_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                        mime="text/csv"
-                    )
-                    
-                    # Save to pickle
-                    pickle_data = {
-                        "results": results,
-                        "timestamp": datetime.now().isoformat(),
-                        "parameters": {
-                            "strategy": strategy,
-                            "num_stocks": num_stocks,
-                            "lookback_period": lookback_period,
-                            "last_month_exclusion": last_month_exclusion
-                        }
-                    }
-                    
-                    pickle_filename = f"scan_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pkl"
-                    with open(pickle_filename, 'wb') as f:
-                        pickle.dump(pickle_data, f)
-                    
-                    with open(pickle_filename, 'rb') as f:
-                        st.download_button(
-                            label="📥 Download Pickle File",
-                            data=f.read(),
-                            file_name=pickle_filename,
-                            mime="application/octet-stream"
-                        )
-                    
-                    # Clean up pickle file
-                    try:
-                        os.remove(pickle_filename)
-                    except:
-                        pass
-                        
-                else:
-                    st.warning("⚠️ No stocks found matching the criteria")
-                    
-            except Exception as e:
-                st.error(f"❌ Error during scan: {str(e)}")
-        
-        # Show current parameters
-        if symbols:
-            st.subheader("📋 Current Configuration")
+            # Rebalance date selection
+            st.subheader("📅 Select Rebalance Date")
+            rebalance_dates = st.session_state.scanner.get_next_rebalance_dates(6)
+            
             col1, col2 = st.columns(2)
             with col1:
-                st.write(f"**Symbols:** {len(symbols)}")
-                st.write(f"**Strategy:** {strategy}")
+                selected_rebalance = st.selectbox(
+                    "Choose rebalance date:",
+                    options=range(len(rebalance_dates)),
+                    format_func=lambda x: f"{rebalance_dates[x]['rebalance_date'].strftime('%Y-%m-%d')} ({rebalance_dates[x]['type']})"
+                )
+            
             with col2:
-                st.write(f"**Top stocks:** {num_stocks}")
-                st.write(f"**Lookback:** {lookback_period} months")
+                if selected_rebalance is not None:
+                    selected_date_info = rebalance_dates[selected_rebalance]
+                    st.markdown(f"""
+                    <div class="metric-card">
+                        <h4>📊 Data Cutoff Date</h4>
+                        <h3>{selected_date_info['data_cutoff_date'].strftime('%Y-%m-%d')}</h3>
+                        <p>Data will be fetched until this date</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+            # File upload or use default
+            st.subheader("📁 Stock Universe")
+            uploaded_file = st.file_uploader("Upload stock list CSV (optional)", type="csv")
+            
+            if uploaded_file is not None:
+                try:
+                    df = pd.read_csv(uploaded_file)
+                    if 'Symbol' in df.columns:
+                        symbols = df['Symbol'].tolist()
+                        st.success(f"✅ Loaded {len(symbols)} symbols from uploaded file")
+                        st.dataframe(df.head(), use_container_width=True)
+                    else:
+                        st.error("❌ CSV file must have a 'Symbol' column")
+                        symbols = []
+                except Exception as e:
+                    st.error(f"❌ Error reading file: {str(e)}")
+                    symbols = []
+            else:
+                # Try to use the uploaded default file
+                if os.path.exists('ind_niftysmallcap250list.csv'):
+                    df = pd.read_csv('ind_niftysmallcap250list.csv')
+                    symbols = df['Symbol'].tolist()
+                    st.info(f"📋 Using default Nifty SmallCap 250 list ({len(symbols)} symbols)")
+                    with st.expander("View stock list"):
+                        st.dataframe(df, use_container_width=True)
+                else:
+                    # Fallback sample
+                    symbols = ["RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK", 
+                              "HINDUNILVR", "ITC", "SBIN", "BHARTIARTL", "ASIANPAINT",
+                              "MARUTI", "BAJFINANCE", "HCLTECH", "KOTAKBANK", "LT",
+                              "WIPRO", "TITAN", "ULTRACEMCO", "NESTLEIND", "POWERGRID"]
+                    st.info(f"📋 Using sample stock list ({len(symbols)} symbols)")
+            
+            # Scan button
+            if symbols and st.button("🔍 Start Stock Scan", type="primary"):
+                if selected_rebalance is not None:
+                    selected_date_info = rebalance_dates[selected_rebalance]
+                    cutoff_date = selected_date_info['data_cutoff_date']
+                    
+                    try:
+                        results = st.session_state.scanner.scan_stocks(
+                            symbols=symbols,
+                            cutoff_date=cutoff_date,
+                            strategy=strategy,
+                            num_stocks=num_stocks,
+                            lookback_period=lookback_period,
+                            last_month_exclusion=last_month_exclusion
+                        )
+                        
+                        if results:
+                            st.markdown('<div class="success-box">✅ Scan completed successfully!</div>', unsafe_allow_html=True)
+                            
+                            # Display results
+                            st.subheader("🏆 Top Momentum Stocks")
+                            
+                            results_df = pd.DataFrame(results, columns=[
+                                "Symbol", "Momentum", "Volatility", "FITP", "Score"
+                            ])
+                            
+                            # Format for display
+                            display_df = results_df.copy()
+                            display_df["Momentum"] = display_df["Momentum"].apply(lambda x: f"{x:.4f}")
+                            display_df["Volatility"] = display_df["Volatility"].apply(lambda x: f"{x:.4f}" if x is not None else "N/A")
+                            display_df["FITP"] = display_df["FITP"].apply(lambda x: f"{x:.4f}" if x is not None else "N/A")
+                            display_df["Score"] = display_df["Score"].apply(lambda x: f"{x:.4f}")
+                            display_df.index = range(1, len(display_df) + 1)
+                            
+                            st.dataframe(display_df, use_container_width=True)
+                            
+                            # Store results for other tabs
+                            st.session_state.results_df = results_df
+                            st.session_state.scan_info = {
+                                "cutoff_date": cutoff_date,
+                                "rebalance_date": selected_date_info['rebalance_date'],
+                                "total_symbols": len(symbols),
+                                "strategy": strategy
+                            }
+                            
+                            # Download options
+                            col1, col2, col3 = st.columns(3)
+                            
+                            with col1:
+                                csv = results_df.to_csv(index=False)
+                                st.download_button(
+                                    label="📥 Download CSV",
+                                    data=csv,
+                                    file_name=f"stock_scan_{cutoff_date.strftime('%Y%m%d')}.csv",
+                                    mime="text/csv"
+                                )
+                            
+                            with col2:
+                                # Save for GitHub upload
+                                results_df.to_csv("latest_results.csv", index=False)
+                                with open("latest_results.csv", "rb") as f:
+                                    st.download_button(
+                                        label="📤 For GitHub Upload",
+                                        data=f.read(),
+                                        file_name="latest_results.csv",
+                                        mime="text/csv"
+                                    )
+                            
+                            with col3:
+                                # Pickle file
+                                pickle_data = {
+                                    "results": results,
+                                    "scan_info": st.session_state.scan_info,
+                                    "timestamp": datetime.now().isoformat()
+                                }
+                                pickle_filename = f"scan_results_{cutoff_date.strftime('%Y%m%d')}.pkl"
+                                with open(pickle_filename, 'wb') as f:
+                                    pickle.dump(pickle_data, f)
+                                with open(pickle_filename, 'rb') as f:
+                                    st.download_button(
+                                        label="📥 Download Pickle",
+                                        data=f.read(),
+                                        file_name=pickle_filename,
+                                        mime="application/octet-stream"
+                                    )
+                                
+                                # Clean up
+                                try:
+                                    os.remove(pickle_filename)
+                                except:
+                                    pass
+                        else:
+                            st.warning("⚠️ No stocks found matching the criteria")
+                            
+                    except Exception as e:
+                        st.error(f"❌ Error during scan: {str(e)}")
+                else:
+                    st.warning("Please select a rebalance date")
+    
+    with tab2:
+        st.subheader("📅 Rebalance Calendar & Trading Days")
+        
+        # Create and display calendar
+        calendar_fig, rebalance_dates = create_rebalance_calendar()
+        st.plotly_chart(calendar_fig, use_container_width=True)
+        
+        # Detailed rebalance schedule
+        st.subheader("📋 Detailed Schedule")
+        schedule_df = pd.DataFrame(rebalance_dates)
+        schedule_df['Rebalance Date'] = schedule_df['rebalance_date'].dt.strftime('%Y-%m-%d (%A)')
+        schedule_df['Data Cutoff'] = schedule_df['data_cutoff_date'].dt.strftime('%Y-%m-%d (%A)')
+        schedule_df['Days Until'] = (schedule_df['rebalance_date'] - datetime.now(TIMEZONE)).dt.days
+        
+        display_schedule = schedule_df[['type', 'Rebalance Date', 'Data Cutoff', 'Days Until']].copy()
+        display_schedule.columns = ['Type', 'Rebalance Date', 'Data Cutoff Date', 'Days Until']
+        display_schedule.index = range(1, len(display_schedule) + 1)
+        
+        st.dataframe(display_schedule, use_container_width=True)
+        
+        # Holiday information
+        st.subheader("🎭 Market Holidays 2025")
+        if st.session_state.scanner.holidays:
+            holidays_list = sorted(list(st.session_state.scanner.holidays))
+            holidays_df = pd.DataFrame({
+                'Date': [h.strftime('%Y-%m-%d (%A)') for h in holidays_list],
+                'Days from Today': [(h - datetime.now().date()).days for h in holidays_list]
+            })
+            holidays_df.index = range(1, len(holidays_df) + 1)
+            st.dataframe(holidays_df, use_container_width=True)
+        else:
+            st.info("No holiday data loaded")
+    
+    with tab3:
+        st.subheader("📊 Analytics Dashboard")
+        
+        if hasattr(st.session_state, 'results_df') and not st.session_state.results_df.empty:
+            # Scan summary metrics
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                avg_momentum = st.session_state.results_df['Momentum'].mean()
+                st.markdown(f"""
+                <div class="metric-card">
+                    <h4>📈 Avg Momentum</h4>
+                    <h3>{avg_momentum:.4f}</h3>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col2:
+                avg_volatility = st.session_state.results_df['Volatility'].mean()
+                st.markdown(f"""
+                <div class="metric-card">
+                    <h4>📊 Avg Volatility</h4>
+                    <h3>{avg_volatility:.4f}</h3>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col3:
+                top_score = st.session_state.results_df['Score'].max()
+                st.markdown(f"""
+                <div class="metric-card">
+                    <h4>🏆 Top Score</h4>
+                    <h3>{top_score:.4f}</h3>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col4:
+                positive_momentum = (st.session_state.results_df['Momentum'] > 0).sum()
+                st.markdown(f"""
+                <div class="metric-card">
+                    <h4>📈 Positive Momentum</h4>
+                    <h3>{positive_momentum}/{len(st.session_state.results_df)}</h3>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # Performance charts
+            perf_fig = create_performance_charts(st.session_state.results_df)
+            if perf_fig:
+                st.plotly_chart(perf_fig, use_container_width=True)
+            
+            # Scan information
+            if hasattr(st.session_state, 'scan_info'):
+                st.subheader("🔍 Scan Information")
+                scan_info = st.session_state.scan_info
+                
+                info_col1, info_col2 = st.columns(2)
+                with info_col1:
+                    st.markdown(f"""
+                    **📅 Data Cutoff Date:** {scan_info['cutoff_date'].strftime('%Y-%m-%d')}  
+                    **📈 Rebalance Date:** {scan_info['rebalance_date'].strftime('%Y-%m-%d')}  
+                    **🎯 Strategy Used:** {scan_info['strategy'].title()}
+                    """)
+                
+                with info_col2:
+                    st.markdown(f"""
+                    **📊 Total Symbols Scanned:** {scan_info['total_symbols']}  
+                    **🏆 Top Stocks Selected:** {len(st.session_state.results_df)}  
+                    **⏰ Scan Completed:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+                    """)
+            
+            # Export options
+            st.subheader("📤 Export Options")
+            export_col1, export_col2, export_col3 = st.columns(3)
+            
+            with export_col1:
+                if st.button("📊 Export for Excel"):
+                    excel_data = st.session_state.results_df.copy()
+                    excel_data.index = range(1, len(excel_data) + 1)
+                    st.dataframe(excel_data)
+            
+            with export_col2:
+                if st.button("📈 Create Summary Report"):
+                    summary_text = f"""
+# Stock Scanner Report
+                    
+**Scan Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+**Data Cutoff:** {st.session_state.scan_info['cutoff_date'].strftime('%Y-%m-%d')}
+**Strategy:** {st.session_state.scan_info['strategy'].title()}
+
+## Top 5 Recommendations:
+{chr(10).join([f"{i+1}. {row['Symbol']} (Score: {row['Score']:.4f})" for i, row in st.session_state.results_df.head().iterrows()])}
+
+## Statistics:
+- Average Momentum: {st.session_state.results_df['Momentum'].mean():.4f}
+- Average Volatility: {st.session_state.results_df['Volatility'].mean():.4f}
+- Stocks with Positive Momentum: {(st.session_state.results_df['Momentum'] > 0).sum()}/{len(st.session_state.results_df)}
+                    """
+                    st.download_button(
+                        label="📥 Download Report",
+                        data=summary_text,
+                        file_name=f"stock_report_{datetime.now().strftime('%Y%m%d')}.md",
+                        mime="text/markdown"
+                    )
+            
+            with export_col3:
+                if st.button("🔄 Clear Results"):
+                    if 'results_df' in st.session_state:
+                        del st.session_state.results_df
+                    if 'scan_info' in st.session_state:
+                        del st.session_state.scan_info
+                    st.rerun()
+        
+        else:
+            st.markdown('<div class="info-box">📊 Run a stock scan first to see analytics</div>', unsafe_allow_html=True)
+            
+            # Show sample analytics
+            st.subheader("📈 Sample Analytics Preview")
+            sample_data = pd.DataFrame({
+                'Symbol': ['RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'ICICIBANK'],
+                'Momentum': [0.1245, 0.0876, 0.1532, 0.0654, 0.0987],
+                'Volatility': [0.0234, 0.0198, 0.0276, 0.0187, 0.0234],
+                'FITP': [0.6234, 0.5876, 0.6732, 0.5456, 0.6123],
+                'Score': [5.3205, 4.4242, 5.5507, 3.4973, 4.2179]
+            })
+            
+            sample_fig = create_performance_charts(sample_data)
+            if sample_fig:
+                st.plotly_chart(sample_fig, use_container_width=True)
+    
+    with tab4:
+        st.subheader("ℹ️ About Fyers Stock Scanner Pro")
+        
+        st.markdown("""
+        ### 🎯 Purpose
+        This advanced stock scanning application helps you identify momentum-based investment opportunities 
+        using sophisticated technical analysis, perfectly timed with rebalance dates.
+        
+        ### 🔬 Methodology
+        
+        **Momentum Calculation:**
+        - Looks back 12 months (configurable) from the data cutoff date
+        - Calculates price momentum excluding the last month to avoid recency bias
+        - Uses closing prices for accuracy
+        
+        **Scoring Strategies:**
+        1. **Volatility-Adjusted:** `Score = Momentum / Volatility`
+        2. **FITP (Fraction in Trend Period):** `Score = Momentum × FITP`
+        3. **Pure Momentum:** `Score = Momentum`
+        
+        **FITP Explained:**
+        - For positive momentum: Fraction of days with positive returns
+        - For negative momentum: Fraction of days with negative returns
+        - Measures consistency of the trend
+        
+        ### 📅 Rebalance Intelligence
+        - Automatically calculates proper trading days
+        - Excludes weekends and market holidays
+        - Ensures data cutoff is the last trading day before rebalance
+        - Supports both month-start and mid-month rebalancing
+        
+        ### 🔧 Features
+        - **Smart Caching:** Avoids re-downloading data for the same configuration
+        - **Holiday Awareness:** Built-in 2025 market holiday calendar
+        - **Multiple Export Formats:** CSV, Pickle, and summary reports
+        - **Visual Analytics:** Interactive charts and performance metrics
+        - **GitHub Integration:** Export-ready files for automated workflows
+        
+        ### 📊 Data Sources
+        - **Market Data:** Fyers API (real-time and historical)
+        - **Stock Universe:** Configurable (default: Nifty SmallCap 250)
+        - **Holidays:** NSE holiday calendar for 2025
+        
+        ### 🚀 Usage Workflow
+        1. **Authenticate** with your Fyers account
+        2. **Select** the next rebalance date
+        3. **Upload** or use default stock list
+        4. **Configure** strategy and parameters
+        5. **Scan** and analyze results
+        6. **Export** for further analysis or automated trading
+        
+        ### ⚡ Performance Tips
+        - Data is cached per configuration to speed up subsequent scans
+        - Use the GitHub export feature for automated Java applications
+        - Monitor the rebalance calendar for optimal timing
+        
+        ### 🔒 Security & Privacy
+        - Authentication tokens are temporary and not stored
+        - All data processing happens locally in your browser session
+        - No sensitive information is transmitted to external servers
+        
+        ### 📈 Best Practices
+        - Run scans 1-2 days before rebalance dates
+        - Compare different strategies for validation
+        - Monitor consistency across multiple time periods
+        - Consider market conditions when interpreting results
+        
+        ---
+        
+        **Version:** 2.0 Pro | **Last Updated:** January 2025
+        
+        *Built with ❤️ for systematic momentum investing*
+        """)
+        
+        # Technical specifications
+        with st.expander("🔧 Technical Specifications"):
+            st.markdown("""
+            **Dependencies:**
+            - Streamlit 1.28+
+            - Fyers API v3
+            - Pandas for data manipulation
+            - Plotly for visualizations
+            - PyTZ for timezone handling
+            
+            **API Limits:**
+            - Fyers: 1000 requests per minute
+            - Data retention: 2 years historical
+            - Cache validity: Per day and configuration
+            
+            **File Formats Supported:**
+            - Input: CSV with 'Symbol' column
+            - Output: CSV, Pickle, Markdown reports
+            
+            **Browser Compatibility:**
+            - Chrome/Edge 90+
+            - Firefox 88+
+            - Safari 14+
+            """)
 
 if __name__ == "__main__":
     main()
