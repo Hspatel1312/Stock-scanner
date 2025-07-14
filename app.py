@@ -983,36 +983,6 @@ def main():
         if 'current_github_integration' in st.session_state and st.button("🔍 Start Scan", type="primary", use_container_width=True):
             if 'current_github_integration' in st.session_state:
                 del st.session_state.current_github_integration
-                                    
-                            except Exception as e:
-                                display_status_card("error", "Save Error", f"Error: {str(e)}", "❌")
-                
-                # Usage examples
-                with st.expander("💡 Usage in other applications"):
-                    csv_url = st.session_state.github_integration.get_csv_url(raw=True)
-                    local_path = st.session_state.github_integration.get_local_csv_path()
-                    st.markdown(f"""
-                    **From GitHub (if accessible):**
-                    ```python
-                    import pandas as pd
-                    df = pd.read_csv('{csv_url}')
-                    ```
-                    
-                    **From Local File:**
-                    ```python
-                    import pandas as pd
-                    df = pd.read_csv('{local_path}')
-                    ```
-                    
-                    **JavaScript:**
-                    ```javascript
-                    fetch('{csv_url}').then(r => r.text()).then(data => console.log(data));
-                    ```
-                    
-                    **Excel/Sheets:** 
-                    - From Web: Data > From Web > Enter GitHub URL
-                    - From File: Open > Browse to local file path
-                    """)
     
     with tab2:
         st.subheader("📅 Rebalance Calendar")
