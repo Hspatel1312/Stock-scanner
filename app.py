@@ -217,21 +217,31 @@ class GitHubIntegration:
     def _setup_git_credentials(self):
         """Setup git credentials for GitHub"""
         try:
-            # Check if we're in a Codespace or have GitHub token
-            github_token = os.environ.get('GITHUB_TOKEN') or os.environ.get('GH_TOKEN')
+            # Check for GitHub token in multiple environment variables
+            github_token = (
+                os.environ.get('GITHUB_TOKEN') or 
+                os.environ.get('GH_TOKEN') or 
+                os.environ.get('GITHUB_ACCESS_TOKEN') or
+                os.environ.get('GIT_TOKEN')
+            )
             
             if github_token:
-                # Configure git to use token authentication
+                # Configure git to use token authentication  
                 git_url = f"https://{github_token}@github.com/{self.username}/{self.repo_name}.git"
-                success, _, _ = self._run_git_command(["git", "remote", "set-url", "origin", git_url])
-                return success, "Token authentication configured"
-            else:
-                # Try to use existing credentials
-                success, _, _ = self._run_git_command(["git", "config", "--get", "user.name"])
+                
+                # Set git config for authentication
+                self._run_git_command(["git", "config", "user.name", "Stock Scanner Bot"])
+                self._run_git_command(["git", "config", "user.email", "scanner@github.com"])
+                
+                # Update remote URL
+                success, stdout, stderr = self._run_git_command(["git", "remote", "set-url", "origin", git_url])
+                
                 if success:
-                    return True, "Using existing git configuration"
+                    return True, "✅ GitHub token authentication configured"
                 else:
-                    return False, "No GitHub token found and no git credentials configured"
+                    return False, f"❌ Failed to configure remote: {stderr}"
+            else:
+                return False, "❌ No GitHub token found. Set GITHUB_TOKEN environment variable."
                     
         except Exception as e:
             return False, f"Error setting up credentials: {str(e)}"
@@ -765,7 +775,7 @@ def main():
                     symbols = NIFTY_SMALLCAP_250_SYMBOLS[:20]
             
             # Scan button
-            if symbols and st.button("🔍 Start Scan", type="primary", use_container_width=True):
+            if symbols and st.button("🔍 Start Scan", type="primary", use_container_width=True, key="main_scan_button"):
                 if selected_rebalance is not None:
                     selected_date_info = rebalance_dates[selected_rebalance]
                     cutoff_date = selected_date_info['data_cutoff_date']
@@ -913,30 +923,52 @@ def main():
                 # GitHub Setup Instructions
                 with st.expander("🔧 GitHub Setup Instructions"):
                     st.markdown("""
-                    ### For GitHub Codespaces:
-                    The app should automatically use your GitHub token. If push fails:
+                    ### 🚀 For GitHub Codespaces:
+                    1. **Check Token Availability:**
+                       ```bash
+                       echo $GITHUB_TOKEN
+                       ```
+                       If empty, the token might not be available.
                                     
-                    1. Check if you have write access to the repository
-                    2. Ensure the repository exists and is accessible
+                    2. **Manual Token Setup (if needed):**
+                       - Go to GitHub → Settings → Developer settings → Personal access tokens
+                       - Create token with `repo` permissions
+                       - In Codespace terminal: `export GITHUB_TOKEN=your_token_here`
                     
-                    ### For Local Development:
-                    Set up GitHub authentication:
+                    3. **Repository Permissions:**
+                       - Ensure you have write access to the repository
+                       - Repository should exist and be accessible
+                    
+                    ### 💻 For Local Development:
                     ```bash
-                    # Set up GitHub token
+                    # Set GitHub token (choose one method)
                     export GITHUB_TOKEN=your_github_token_here
+                    # OR
+                    export GH_TOKEN=your_github_token_here
                     
-                    # Or configure git credentials
+                    # Configure git (if needed)
                     git config --global user.name "Your Name"
                     git config --global user.email "your.email@example.com"
                     ```
                                     
-                    ### Alternative:
-                    Files are always saved locally in the `data/` folder. You can manually commit and push:
+                    ### 🔧 Manual Git Operations:
+                    Files are saved locally in `data/` folder. Manual push:
                     ```bash
+                    cd /workspaces/Stock-scanner  # or your repo path
                     git add data/
-                    git commit -m "Add scan results"
+                    git commit -m "Add stock scan results"
                     git push
                     ```
+                    
+                    ### 🔍 Troubleshooting:
+                    - **"No such device or address"**: Network/authentication issue
+                    - **"Permission denied"**: Check repository write permissions  
+                    - **"Repository not found"**: Verify repository exists and is accessible
+                    
+                    ### ✅ Current Status:
+                    - **Local Save**: Always works ✅
+                    - **GitHub Push**: Requires authentication token
+                    - **File Access**: Use local path for immediate access
                     """)
                 
                 # Usage examples
@@ -979,10 +1011,6 @@ def main():
                     else:
                         st.info("Save a scan first to see usage examples")
         
-        # Clear any previous GitHub integration when starting new scan
-        if 'current_github_integration' in st.session_state and st.button("🔍 Start Scan", type="primary", use_container_width=True):
-            if 'current_github_integration' in st.session_state:
-                del st.session_state.current_github_integration
     
     with tab2:
         st.subheader("📅 Rebalance Calendar")
