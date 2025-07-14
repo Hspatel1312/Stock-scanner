@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Fyers Stock Scanner Pro - Streamlit Application",
   "scripts": {
-    "build": "echo 'Building Python Streamlit app...' && apt update && apt install -y python3-pip && python3 -m pip install -r requirements.txt",
+    "build": "echo 'Building Python Streamlit app...' && python3 -m pip install -r requirements.txt",
     "start": "npm run build && python3 -m streamlit run streamlit_app.py --server.port=$PORT --server.address=0.0.0.0"
   },
   "dependencies": {},
