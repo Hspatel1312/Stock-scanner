@@ -868,9 +868,10 @@ def main():
                 for idx, row in top_momentum.iterrows():
                     st.markdown(f"• **{row['Symbol']}**: {row['Momentum']:.4f}")
 
-            with col2:
+            with col2:git add app.py
+git commit
                 st.markdown("**📊 Top 5 by Score**")
-                top_score = st.session_state.results_df.nlargest(5, 'Score')[['Symbol', 'Score'])
+                top_score = st.session_state.results_df.nlargest(5, 'Score')[['Symbol', 'Score'])]
                 for idx, row in top_score.iterrows():
                     st.markdown(f"• **{row['Symbol']}**: {row['Score']:.4f}")
 
