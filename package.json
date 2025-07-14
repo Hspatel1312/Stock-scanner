@@ -4,7 +4,7 @@
   "description": "Fyers Stock Scanner Pro - Streamlit Application",
   "scripts": {
     "build": "echo 'Building Python Streamlit app...' && python3 -m pip install -r requirements.txt",
-    "start": "streamlit run streamlit_app.py --server.port=$PORT --server.address=0.0.0.0"
+    "start": "python3 -m streamlit run streamlit_app.py --server.port=$PORT --server.address=0.0.0.0"
   },
   "dependencies": {},
   "engines": {
