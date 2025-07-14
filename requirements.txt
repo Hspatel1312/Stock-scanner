@@ -4,3 +4,4 @@ fyers-apiv3>=3.0.0
 pytz>=2023.3
 requests>=2.28.0
 plotly>=5.15.0
+python-dotenv>=1.0.0

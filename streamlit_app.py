@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
+from dotenv import load_dotenv
 import subprocess
 import json
 from datetime import datetime, timedelta
@@ -10,31 +11,11 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-# Auto-load GitHub token
-def load_github_token():
-    """Load GitHub token from ~/.jshrc file or environment"""
-    token = os.environ.get('GITHUB_TOKEN')
-    if token:
-        return token
-    
-    # Try to load from ~/.jshrc file
-    try:
-        jshrc_path = os.path.expanduser('~/.jshrc')
-        if os.path.exists(jshrc_path):
-            with open(jshrc_path, 'r') as f:
-                content = f.read()
-                for line in content.split('\n'):
-                    if 'GITHUB_TOKEN=' in line:
-                        token = line.split('GITHUB_TOKEN=')[1].strip()
-                        os.environ['GITHUB_TOKEN'] = token
-                        return token
-    except Exception as e:
-        st.error(f"Error loading token from ~/.jshrc: {e}")
-    
-    return None
+# Load environment variables from .env file
+load_dotenv()
 
-# Load token at startup
-github_token = load_github_token()
+# Auto-load GitHub token
+github_token = os.getenv('GITHUB_TOKEN')
 
 # Page config
 st.set_page_config(
