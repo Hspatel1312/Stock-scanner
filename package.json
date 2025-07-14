@@ -1,0 +1,13 @@
+{
+  "name": "fyers-stock-scanner-pro",
+  "version": "1.0.0",
+  "description": "Fyers Stock Scanner Pro - Streamlit Application",
+  "scripts": {
+    "build": "echo 'Building Python Streamlit app...' && pip install -r requirements.txt",
+    "start": "streamlit run streamlit_app.py --server.port=$PORT --server.address=0.0.0.0"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
