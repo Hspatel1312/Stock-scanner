@@ -196,7 +196,6 @@ class GitHubIntegration:
             if commit_message is None:
                 commit_message = f"Update momentum scan - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
-            original Stuart
             original_cwd = Path.cwd()
 
             try:
@@ -869,11 +868,8 @@ def main():
                     st.markdown(f"• **{row['Symbol']}**: {row['Momentum']:.4f}")
 
             with col2:
-                st.markdown("**📊 Togit pull origin main
-git add app.py
-git commit -m "Fix syntax error in app.py"
-git push origin mainp 5 by Score**")
-                top_score = st.session_state.results_df.nlargest(5, 'Score')[['Symbol', 'Score'])]
+                st.markdown("**📊 Top 5 by Score**")
+                top_score = st.session_state.results_df.nlargest(5, 'Score')[['Symbol', 'Score']]
                 for idx, row in top_score.iterrows():
                     st.markdown(f"• **{row['Symbol']}**: {row['Score']:.4f}")
 
