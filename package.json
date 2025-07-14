@@ -1,0 +1,13 @@
+{
+  "name": "fyers-stock-scanner-pro",
+  "version": "1.0.0",
+  "description": "Fyers Stock Scanner Pro - Streamlit Application",
+  "scripts": {
+    "build": "echo 'Building Python web app...'",
+    "start": "python3 simple_app.py"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

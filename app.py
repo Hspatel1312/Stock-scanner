@@ -112,7 +112,7 @@ FYERS_CONFIG = {
 }
 
 CACHE_FILE = "stock_data_cache.pkl"
-GITHUB_CSV_FILENAME = "nifty_smallcap_momentum_scan.csv"
+GITHUB_CSV_FILENAME = "momentum_scan_results.csv"
 TIMEZONE = pytz.timezone('Asia/Kolkata')
 
 def get_repo_path():
@@ -174,74 +174,213 @@ class GitHubIntegration:
         self.data_folder = Path(self.repo_path) / GITHUB_CONFIG["data_folder"]
         self.username = GITHUB_CONFIG["username"]
         self.repo_name = GITHUB_CONFIG["repo_name"]
-        self.github_token = github_token or os.getenv("GITHUB_TOKEN") or st.secrets.get("GITHUB_TOKEN")
-        if not self.github_token:
-            raise ValueError("GitHub token not provided or found in environment variable GITHUB_TOKEN or Streamlit secrets")
-        self.ensure_repo_exists()
-
-    def ensure_repo_exists(self):
+        # Use timestamp-based filename for unique files
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.csv_filename = f"stock_scan_{timestamp}.csv"
+        self.csv_file_path = self.data_folder / self.csv_filename
+        self._setup_repo()
+    
+    def _setup_repo(self):
+        """Setup repository and data folder"""
         if not self.repo_path.exists():
+            st.error(f"Repository path not found: {self.repo_path}")
             return False
         self.data_folder.mkdir(exist_ok=True)
+        
+        # Create README if it doesn't exist
+        readme_path = self.data_folder / "README.md"
+        if not readme_path.exists():
+            with open(readme_path, 'w') as f:
+                f.write("# Data Folder\nThis folder contains CSV outputs from stock scans.\n")
+        
         return True
-
-    def push_csv_to_github(self, df, commit_message=None):
+    
+    def _run_git_command(self, command, timeout=30):
+        """Run git command with proper error handling"""
         try:
-            if not self.ensure_repo_exists():
-                return False, "Repository not found"
-
-            csv_path = self.data_folder / GITHUB_CSV_FILENAME
-            df.to_csv(csv_path, index=False)
-
-            if commit_message is None:
-                commit_message = f"Update momentum scan - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-
-            original Stuart
-            original_cwd = Path.cwd()
-
-            try:
-                os.chdir(self.repo_path)
-
-                # Configure Git user
-                subprocess.run(["git", "config", "user.email", "app@example.com"], check=True, capture_output=True, timeout=10)
-                subprocess.run(["git", "config", "user.name", "Scanner App"], check=True, capture_output=True, timeout=10)
-
-                # Set up remote with authentication
-                remote_url = f"https://{self.username}:{self.github_token}@github.com/{self.username}/{self.repo_name}.git"
-                subprocess.run(["git", "remote", "set-url", "origin", remote_url], check=True, capture_output=True, timeout=10)
-
-                # Stage the file
-                subprocess.run(["git", "add", f"data/{GITHUB_CSV_FILENAME}"], check=True, capture_output=True, timeout=30)
-
-                # Check if there are changes to commit
-                diff_result = subprocess.run(["git", "diff", "--cached", "--quiet"], capture_output=True, timeout=30)
-                if diff_result.returncode == 0:
-                    return True, f"File {GITHUB_CSV_FILENAME} already up to date"
-
-                # Commit and push
-                subprocess.run(["git", "commit", "-m", commit_message], check=True, capture_output=True, timeout=30)
-                push_result = subprocess.run(["git", "push", "origin", "main"], capture_output=True, text=True, timeout=60)
-
-                if push_result.returncode == 0:
-                    return True, f"Successfully updated {GITHUB_CSV_FILENAME}"
+            result = subprocess.run(
+                command, 
+                cwd=self.repo_path, 
+                capture_output=True, 
+                text=True, 
+                timeout=timeout
+            )
+            return result.returncode == 0, result.stdout.strip(), result.stderr.strip()
+        except Exception as e:
+            return False, "", str(e)
+    
+    def _check_git_status(self):
+        """Check if we're in a git repository and get status"""
+        success, stdout, stderr = self._run_git_command(["git", "status", "--porcelain"])
+        return success, stdout
+    
+    def _setup_git_credentials(self):
+        """Setup git credentials for GitHub"""
+        try:
+            # Check for GitHub token in multiple environment variables
+            github_token = (
+                os.environ.get('GITHUB_TOKEN') or 
+                os.environ.get('GH_TOKEN') or 
+                os.environ.get('GITHUB_ACCESS_TOKEN') or
+                os.environ.get('GIT_TOKEN')
+            )
+            
+            if github_token:
+                # Configure git to use token authentication  
+                git_url = f"https://{github_token}@github.com/{self.username}/{self.repo_name}.git"
+                
+                # Set git config for authentication
+                self._run_git_command(["git", "config", "user.name", "Stock Scanner Bot"])
+                self._run_git_command(["git", "config", "user.email", "scanner@github.com"])
+                
+                # Update remote URL
+                success, stdout, stderr = self._run_git_command(["git", "remote", "set-url", "origin", git_url])
+                
+                if success:
+                    return True, "✅ GitHub token authentication configured"
                 else:
-                    return False, f"Git push failed: {push_result.stderr}"
-
-            except subprocess.CalledProcessError as e:
-                return False, f"Git error: {e.stderr}"
-            except Exception as e:
-                return False, f"Error: {str(e)}"
+                    return False, f"❌ Failed to configure remote: {stderr}"
+            else:
+                return False, "❌ No GitHub token found. Set GITHUB_TOKEN environment variable."
+                    
+        except Exception as e:
+            return False, f"Error setting up credentials: {str(e)}"
+    
+    def save_csv_locally(self, df, scan_date, strategy, commit_message=None):
+        """Save CSV file locally in the data folder"""
+        try:
+            if not self._setup_repo():
+                return False, "Repository setup failed"
+            
+            # Generate filename with scan details
+            date_str = scan_date.strftime("%Y%m%d")
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            self.csv_filename = f"stock_scan_{date_str}_{strategy}_{timestamp}.csv"
+            self.csv_file_path = self.data_folder / self.csv_filename
+            
+            # Save CSV file
+            df.to_csv(self.csv_file_path, index=False)
+            
+            # Create metadata file
+            metadata = {
+                "filename": self.csv_filename,
+                "timestamp": datetime.now().isoformat(),
+                "rows": len(df),
+                "columns": list(df.columns),
+                "scan_date": scan_date.strftime('%Y-%m-%d'),
+                "strategy": strategy,
+                "generated_by": "Fyers Stock Scanner Pro",
+                "file_size_kb": round(self.csv_file_path.stat().st_size / 1024, 2),
+                "scan_parameters": {
+                    "strategy": strategy,
+                    "scan_date": scan_date.isoformat()
+                }
+            }
+            
+            metadata_path = self.data_folder / f"{self.csv_filename.replace('.csv', '_metadata.json')}"
+            with open(metadata_path, 'w') as f:
+                json.dump(metadata, f, indent=2)
+            
+            return True, f"CSV saved successfully to {self.csv_file_path}"
+            
+        except Exception as e:
+            return False, f"Error saving CSV: {str(e)}"
+    
+    def push_to_github(self, df, scan_date, strategy, commit_message=None):
+        """Save CSV locally and attempt to push to GitHub"""
+        # First save locally
+        success, message = self.save_csv_locally(df, scan_date, strategy, commit_message)
+        if not success:
+            return False, message
+        
+        # Check git status
+        git_ok, git_status = self._check_git_status()
+        if not git_ok:
+            return True, f"✅ CSV saved locally. Git repository not available."
+        
+        # Setup credentials
+        cred_ok, cred_message = self._setup_git_credentials()
+        if not cred_ok:
+            return True, f"✅ CSV saved locally. {cred_message}"
+        
+        # Attempt git operations
+        try:
+            if commit_message is None:
+                commit_message = f"Add {strategy} scan results - {scan_date.strftime('%Y-%m-%d')} - {datetime.now().strftime('%H:%M:%S')}"
+            
+            original_cwd = Path.cwd()
+            os.chdir(self.repo_path)
+            
+            try:
+                # Configure git user
+                self._run_git_command(["git", "config", "user.email", "scanner@fyersapp.com"], timeout=10)
+                self._run_git_command(["git", "config", "user.name", "Fyers Stock Scanner"], timeout=10)
+                
+                # Add files
+                add_success1, _, add_error1 = self._run_git_command(["git", "add", f"data/{self.csv_filename}"])
+                add_success2, _, add_error2 = self._run_git_command(["git", "add", f"data/{self.csv_filename.replace('.csv', '_metadata.json')}"])
+                
+                if not add_success1:
+                    return True, f"✅ CSV saved locally. Git add failed: {add_error1}"
+                
+                # Check if there are changes to commit
+                diff_success, _, _ = self._run_git_command(["git", "diff", "--cached", "--quiet"])
+                if diff_success:
+                    return True, f"✅ CSV saved locally. No changes to commit."
+                
+                # Commit changes
+                commit_success, commit_out, commit_error = self._run_git_command(["git", "commit", "-m", commit_message])
+                
+                if not commit_success:
+                    return True, f"✅ CSV saved locally. Commit failed: {commit_error}"
+                
+                # Try to push (this might fail due to authentication)
+                push_success, push_out, push_error = self._run_git_command(["git", "push"], timeout=60)
+                
+                if push_success:
+                    return True, f"🎉 Successfully pushed {self.csv_filename} to GitHub!"
+                else:
+                    # Clean up the error message
+                    clean_error = push_error.replace("fatal: ", "").replace("error: ", "")
+                    return True, f"✅ CSV saved and committed locally. GitHub push failed: {clean_error}"
+                    
             finally:
                 os.chdir(original_cwd)
-
+                
+        except subprocess.TimeoutExpired:
+            return True, "✅ CSV saved locally. Git operation timed out"
+        except subprocess.CalledProcessError as e:
+            return True, f"✅ CSV saved locally. Git error: {str(e)}"
         except Exception as e:
-            return False, f"Error: {str(e)}"
-
+            return True, f"✅ CSV saved locally. Unexpected error: {str(e)}"
+    
     def get_csv_url(self, raw=True):
+        """Get the GitHub URL for the CSV file"""
         if raw:
-            return f"https://raw.githubusercontent.com/{self.username}/{self.repo_name}/main/data/{GITHUB_CSV_FILENAME}"
+            return f"https://raw.githubusercontent.com/{self.username}/{self.repo_name}/main/data/{self.csv_filename}"
         else:
-            return f"https://github.com/{self.username}/{self.repo_name}/blob/main/data/{GITHUB_CSV_FILENAME}"
+            return f"https://github.com/{self.username}/{self.repo_name}/blob/main/data/{self.csv_filename}"
+    
+    def get_local_csv_path(self):
+        """Get the local path of the CSV file"""
+        return str(self.csv_file_path)
+    
+    def test_github_url(self):
+        """Test if the GitHub URL is accessible"""
+        try:
+            csv_url = self.get_csv_url(raw=True)
+            response = requests.get(csv_url, timeout=10)
+            
+            if response.status_code == 200:
+                lines = response.text.split('\n')[:3]
+                return True, "✅ CSV accessible from GitHub", lines
+            else:
+                return False, f"⚠️ GitHub URL not accessible (Status: {response.status_code})", []
+                
+        except requests.exceptions.RequestException as e:
+            return False, f"⚠️ GitHub URL not accessible: {str(e)}", []
+        except Exception as e:
+            return False, f"⚠️ Error testing URL: {str(e)}", []
 
 class EnhancedStockScanner:
     def __init__(self):
@@ -640,7 +779,7 @@ def main():
                     symbols = NIFTY_SMALLCAP_250_SYMBOLS[:20]
 
             # Scan button
-            if symbols and st.button("🔍 Start Scan", type="primary", use_container_width=True):
+            if symbols and st.button("🔍 Start Scan", type="primary", use_container_width=True, key="main_scan_button"):
                 if selected_rebalance is not None:
                     selected_date_info = rebalance_dates[selected_rebalance]
                     cutoff_date = selected_date_info['data_cutoff_date']
@@ -694,78 +833,189 @@ def main():
 
                 st.markdown("""
                 <div class="github-section">
-                    <h3>🔗 Push to GitHub</h3>
-                    <p>Save results to GitHub for access from other applications</p>
+                    <h3>💾 Save Results to GitHub</h3>
+                    <p>Save scan results locally and push to GitHub repository</p>
                 </div>
                 """, unsafe_allow_html=True)
-
-                col1, col2 = st.columns([2, 1])
-
-                with col1:
+                
+                # Show current scan info
+                if hasattr(st.session_state, 'scan_info'):
+                    scan_info = st.session_state.scan_info
                     st.markdown(f"""
-                    **📁 File:** `{GITHUB_CSV_FILENAME}`  
-                    **📊 Rows:** {len(st.session_state.results_df)}  
-                    **🔄 Action:** Replace existing file  
+                    **📊 Scan Details:**
+                    - **Strategy:** {scan_info['strategy'].title()}
+                    - **Cutoff Date:** {scan_info['cutoff_date'].strftime('%Y-%m-%d')}
+                    - **Rebalance Date:** {scan_info['rebalance_date'].strftime('%Y-%m-%d')}
+                    - **Stocks Found:** {len(st.session_state.results_df)}
                     """)
-
+                
+                col1, col2 = st.columns([3, 1])
+                
                 with col2:
-                    if st.button("📤 Push to GitHub", type="primary", use_container_width=True):
+                    if st.button("💾 Save & Push to GitHub", type="primary", use_container_width=True):
                         with st.spinner("Uploading..."):
                             try:
-                                success, message = st.session_state.github_integration.push_csv_to_github(
+                                # Create new GitHub integration instance for this scan
+                                github_integration = GitHubIntegration()
+                                
+                                scan_info = st.session_state.scan_info
+                                success, message = st.session_state.github_integration.push_to_github(
                                     st.session_state.results_df,
-                                    f"Momentum scan - {strategy} - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+                                    scan_info['cutoff_date'],
+                                    scan_info['strategy'],
+                                    f"{scan_info['strategy'].title()} scan - {scan_info['cutoff_date'].strftime('%Y-%m-%d')}"
                                 )
-
-                                if success:
-                                    display_status_card("success", "Upload Success", message, "✅")
-
-                                    csv_url = st.session_state.github_integration.get_csv_url(raw=True)
-                                    st.markdown(f"""
-                                    **🌐 Direct CSV URL:**
-                                    ```
-                                    {csv_url}
-                                    ```
-                                    """)
-
-                                    if st.button("🧪 Test URL"):
-                                        try:
-                                            response = requests.get(csv_url, timeout=10)
-                                            if response.status_code == 200:
-                                                display_status_card("success", "URL Test", "CSV accessible", "✅")
-                                                lines = response.text.split('\n')[:3]
-                                                for line in lines:
-                                                    st.code(line)
-                                            else:
-                                                display_status_card("error", "URL Test", f"Status: {response.status_code}", "❌")
-                                        except Exception as e:
-                                            display_status_card("error", "URL Test", f"Error: {str(e)}", "❌")
-
+                                
+                                if "Successfully pushed" in message:
+                                    display_status_card("success", "GitHub Success", message, "🎉")
                                     st.balloons()
                                 else:
-                                    display_status_card("error", "Upload Failed", message, "❌")
-
+                                    display_status_card("info", "Local Save Success", message, "✅")
+                                
+                                # Store the integration instance for URL testing
+                                st.session_state.current_github_integration = st.session_state.github_integration
+                                
                             except Exception as e:
-                                display_status_card("error", "Upload Error", f"Error: {str(e)}", "❌")
-
-                # Usage examples
-                with st.expander("💡 Usage in other applications"):
-                    csv_url = st.session_state.github_integration.get_csv_url(raw=True)
-                    st.markdown(f"""
-                    **Python:**
-                    ```python
-                    import pandas as pd
-                    df = pd.read_csv('{csv_url}')
+                                display_status_card("error", "Save Error", f"Error: {str(e)}", "❌")
+                
+                # Show file information after save
+                if hasattr(st.session_state, 'current_github_integration'):
+                    github_int = st.session_state.current_github_integration
+                    
+                    with col1:
+                        # Show local file path
+                        local_path = github_int.get_local_csv_path()
+                        st.markdown(f"""
+                        **📁 Local File:**
+                        ```
+                        {local_path}
+                        ```
+                        """)
+                        
+                        # Show GitHub URL
+                        csv_url = github_int.get_csv_url(raw=True)
+                        st.markdown(f"""
+                        **🌐 GitHub URL:**
+                        ```
+                        {csv_url}
+                        ```
+                        """)
+                    
+                    # Test GitHub URL button
+                    col_test1, col_test2 = st.columns([1, 1])
+                    
+                    with col_test1:
+                        if st.button("🧪 Test GitHub URL", key="test_github_url"):
+                            with st.spinner("Testing GitHub URL..."):
+                                url_success, url_message, preview_lines = github_int.test_github_url()
+                                    
+                                if url_success:
+                                    st.success(url_message)
+                                    if preview_lines:
+                                        st.markdown("**📄 Preview:**")
+                                        for line in preview_lines:
+                                            if line.strip():
+                                                st.code(line)
+                                else:
+                                    st.warning(url_message)
+                    
+                    with col_test2:
+                        if st.button("📋 Copy Local Path", key="copy_local_path"):
+                            st.code(local_path)
+                            st.success("Path displayed above - copy manually")
+                
+                # GitHub Setup Instructions
+                with st.expander("🔧 GitHub Setup Instructions"):
+                    st.markdown("""
+                    ### 🚀 For GitHub Codespaces:
+                    1. **Check Token Availability:**
+                       ```bash
+                       echo $GITHUB_TOKEN
+                       ```
+                       If empty, the token might not be available.
+                                    
+                    2. **Manual Token Setup (if needed):**
+                       - Go to GitHub → Settings → Developer settings → Personal access tokens
+                       - Create token with `repo` permissions
+                       - In Codespace terminal: `export GITHUB_TOKEN=your_token_here`
+                    
+                    3. **Repository Permissions:**
+                       - Ensure you have write access to the repository
+                       - Repository should exist and be accessible
+                    
+                    ### 💻 For Local Development:
+                    ```bash
+                    # Set GitHub token (choose one method)
+                    export GITHUB_TOKEN=your_github_token_here
+                    # OR
+                    export GH_TOKEN=your_github_token_here
+                    
+                    # Configure git (if needed)
+                    git config --global user.name "Your Name"
+                    git config --global user.email "your.email@example.com"
                     ```
-
-                    **JavaScript:**
-                    ```javascript
-                    fetch('{csv_url}').then(r => r.text()).then(data => console.log(data));
+                                    
+                    ### 🔧 Manual Git Operations:
+                    Files are saved locally in `data/` folder. Manual push:
+                    ```bash
+                    cd /workspaces/Stock-scanner  # or your repo path
+                    git add data/
+                    git commit -m "Add stock scan results"
+                    git push
                     ```
-
-                    **Excel/Sheets:** Data > From Web > Enter URL
+                    
+                    ### 🔍 Troubleshooting:
+                    - **"No such device or address"**: Network/authentication issue
+                    - **"Permission denied"**: Check repository write permissions  
+                    - **"Repository not found"**: Verify repository exists and is accessible
+                    
+                    ### ✅ Current Status:
+                    - **Local Save**: Always works ✅
+                    - **GitHub Push**: Requires authentication token
+                    - **File Access**: Use local path for immediate access
                     """)
-
+                
+                # Usage examples
+                with st.expander("💡 Usage Examples"):
+                    if hasattr(st.session_state, 'current_github_integration'):
+                        csv_url = st.session_state.current_github_integration.get_csv_url(raw=True)
+                        local_path = st.session_state.current_github_integration.get_local_csv_path()
+                        
+                        st.markdown(f"""
+                        **Python (from GitHub):**
+                        ```python
+                        import pandas as pd
+                        df = pd.read_csv('{csv_url}')
+                        print(df.head())
+                        ```
+                        
+                        **Python (from Local File):**
+                        ```python
+                        import pandas as pd
+                        df = pd.read_csv(r'{local_path}')
+                        print(df.head())
+                        ```
+                        
+                        **JavaScript/Fetch:**
+                        ```javascript
+                        fetch('{csv_url}')
+                            .then(response => response.text())
+                            .then(data => console.log(data));
+                        ```
+                        
+                        **Excel/Google Sheets:**
+                        - **From Web:** Data → From Web → Enter GitHub URL
+                        - **From File:** File → Open → Browse to local file
+                        
+                        **curl Command:**
+                        ```bash
+                        curl -o scan_results.csv '{csv_url}'
+                        ```
+                        """)
+                    else:
+                        st.info("Save a scan first to see usage examples")
+        
+    
     with tab2:
         st.subheader("📅 Rebalance Calendar")
 
