@@ -2,20 +2,20 @@ import streamlit as st
 import pandas as pd
 import os
 from dotenv import load_dotenv
-import subprocess
 import json
 from datetime import datetime, timedelta
 import pytz
-import requests
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import time
+import numpy as np
 
 # Load environment variables from .env file
 load_dotenv()
 
 # Auto-load GitHub token
-github_token = os.getenv('GITHUB_TOKEN')
+github_token = os.getenv('GITHUB_TOKEN', 'demo_token_for_testing')
 
 # Page config
 st.set_page_config(
@@ -136,22 +136,41 @@ with col1:
     if st.button("🚀 Run Stock Scan", type="primary", use_container_width=True):
         with st.spinner("🔍 Scanning stocks..."):
             # Simulate stock scanning (replace with actual Fyers API calls)
-            import time
             time.sleep(2)
             
-            # Generate sample data
+            # Generate more realistic sample data based on scan type
+            symbols = ['RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'ICICIBANK', 'HINDUNILVR', 'ITC', 'SBIN', 'BHARTIARTL', 'ASIANPAINT']
+            
+            np.random.seed(42)  # For consistent results
+            n_stocks = min(len(symbols), max_results + 5)
+            
             sample_data = {
-                'Symbol': ['RELIANCE', 'TCS', 'INFY', 'HDFCBANK', 'ICICIBANK'],
-                'Momentum': [0.15, -0.08, 0.12, 0.18, 0.22],
-                'Volatility': [0.025, 0.018, 0.032, 0.015, 0.020],
-                'FITP': [0.65, 0.58, 0.72, 0.68, 0.75],
-                'Score': [12.5, -5.2, 8.9, 15.3, 18.7]
+                'Symbol': symbols[:n_stocks],
+                'Momentum': np.random.normal(0.05, 0.15, n_stocks),
+                'Volatility': np.random.uniform(0.01, 0.04, n_stocks),
+                'FITP': np.random.uniform(0.4, 0.8, n_stocks),
+                'Score': np.random.normal(5, 15, n_stocks)
             }
             
             df = pd.DataFrame(sample_data)
             
+            # Apply scan type specific adjustments
+            if scan_type == "Volatility":
+                df['Score'] = df['Volatility'] * 500 + np.random.normal(0, 5, len(df))
+            elif scan_type == "Momentum":
+                df['Score'] = df['Momentum'] * 100 + np.random.normal(0, 3, len(df))
+            
+            # Round values for better display
+            df['Momentum'] = df['Momentum'].round(4)
+            df['Volatility'] = df['Volatility'].round(6)
+            df['FITP'] = df['FITP'].round(4)
+            df['Score'] = df['Score'].round(2)
+            
             # Filter by minimum score
             df_filtered = df[df['Score'] >= min_score].head(max_results)
+            
+            # Sort by score descending
+            df_filtered = df_filtered.sort_values('Score', ascending=False)
             
             # Save to data folder
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -173,7 +192,10 @@ with col1:
                 "scan_date": datetime.now().strftime("%Y-%m-%d"),
                 "generated_by": "Fyers Stock Scanner Pro",
                 "file_size_kb": round(os.path.getsize(filepath) / 1024, 2),
-                "replaced_existing": False
+                "scan_type": scan_type,
+                "lookback_days": lookback_days,
+                "min_score": min_score,
+                "max_results": max_results
             }
             
             with open(f"{filepath.replace('.csv', '_metadata.json')}", 'w') as f:
@@ -183,7 +205,24 @@ with col1:
             
             # Display results
             st.subheader("📊 Scan Results")
-            st.dataframe(df_filtered, use_container_width=True)
+            
+            # Format the dataframe for better display
+            display_df = df_filtered.copy()
+            display_df['Momentum'] = display_df['Momentum'].apply(lambda x: f"{x:.2%}")
+            display_df['Volatility'] = display_df['Volatility'].apply(lambda x: f"{x:.2%}")
+            display_df['FITP'] = display_df['FITP'].apply(lambda x: f"{x:.1%}")
+            
+            st.dataframe(
+                display_df,
+                use_container_width=True,
+                column_config={
+                    "Symbol": st.column_config.TextColumn("Symbol", width="small"),
+                    "Momentum": st.column_config.TextColumn("Momentum", width="small"),
+                    "Volatility": st.column_config.TextColumn("Volatility", width="small"),
+                    "FITP": st.column_config.TextColumn("FITP", width="small"),
+                    "Score": st.column_config.NumberColumn("Score", format="%.2f")
+                }
+            )
             
             # Create visualization
             if len(df_filtered) > 0:
@@ -195,8 +234,14 @@ with col1:
                     color='Score',
                     hover_name='Symbol',
                     title=f"{scan_type} Scan Results",
-                    color_continuous_scale='RdYlGn'
+                    color_continuous_scale='RdYlGn',
+                    labels={
+                        'Volatility': 'Volatility (%)',
+                        'Momentum': 'Momentum (%)',
+                        'Score': 'Score'
+                    }
                 )
+                fig.update_layout(height=400)
                 st.plotly_chart(fig, use_container_width=True)
 
 with col2:
@@ -230,14 +275,32 @@ with col2:
                     try:
                         df = pd.read_csv(f"{data_dir}/{file}")
                         st.subheader(f"📊 {file}")
-                        st.dataframe(df, use_container_width=True)
+                        
+                        # Format for display
+                        display_df = df.copy()
+                        if 'Momentum' in display_df.columns:
+                            display_df['Momentum'] = display_df['Momentum'].apply(lambda x: f"{x:.2%}")
+                        if 'Volatility' in display_df.columns:
+                            display_df['Volatility'] = display_df['Volatility'].apply(lambda x: f"{x:.2%}")
+                        if 'FITP' in display_df.columns:
+                            display_df['FITP'] = display_df['FITP'].apply(lambda x: f"{x:.1%}")
+                        
+                        st.dataframe(display_df, use_container_width=True)
                         
                         # Show metadata if available
                         metadata_file = f"{data_dir}/{file.replace('.csv', '_metadata.json')}"
                         if os.path.exists(metadata_file):
+                            st.subheader("📋 Scan Details")
                             with open(metadata_file, 'r') as f:
                                 metadata = json.load(f)
-                            st.json(metadata)
+                            
+                            col_a, col_b = st.columns(2)
+                            with col_a:
+                                st.metric("Rows", metadata.get('rows', 'N/A'))
+                                st.metric("File Size", f"{metadata.get('file_size_kb', 0)} KB")
+                            with col_b:
+                                st.metric("Scan Type", metadata.get('scan_type', 'N/A'))
+                                st.metric("Min Score", metadata.get('min_score', 'N/A'))
                     except Exception as e:
                         st.error(f"Error loading file: {e}")
         else:
@@ -247,6 +310,22 @@ with col2:
 
 # Footer
 st.markdown("---")
+
+# Add some metrics in the footer
+col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+
+with col_f1:
+    st.metric("🎯 Active Scans", len([f for f in os.listdir("data") if f.endswith('.csv')]) if os.path.exists("data") else 0)
+
+with col_f2:
+    st.metric("📊 Scan Types", 4)
+
+with col_f3:
+    st.metric("⚡ Status", "Online")
+
+with col_f4:
+    st.metric("🔧 Version", "1.0.0")
+
 st.markdown("""
 <div style='text-align: center; color: #666; padding: 1rem;'>
     <p>🚀 <strong>Fyers Stock Scanner Pro</strong> | Built with Streamlit</p>
