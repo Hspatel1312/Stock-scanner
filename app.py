@@ -132,40 +132,53 @@ GITHUB_CONFIG = {
     "data_folder": "data"
 }
 
-# Nifty SmallCap 250 Stock List (Exact 250 symbols from CSV)
-NIFTY_SMALLCAP_250_SYMBOLS = [
-    "360ONE", "AADHARHFC", "AARTIIND", "AAVAS", "ACE", "ABREL", "ABSLAMC", "AEGISLOG", 
-    "AFFLE", "AKUMS", "APLLTD", "ALKYLAMINE", "ALOKINDS", "ARE&M", "AMBER", "ANANDRATHI", 
-    "ANANTRAJ", "ANGELONE", "APARINDS", "APTUS", "ACI", "ASAHIINDIA", "ASTERDM", "ASTRAZEN", 
-    "ATUL", "AVANTIFEED", "BASF", "BEML", "BLS", "BALAMINES", "BALRAMCHIN", "BATAINDIA", 
-    "BIKAJI", "BIRLACORPN", "BSOFT", "BLUEDART", "BLUESTARCO", "BBTC", "BRIGADE", "MAPMYINDIA", 
-    "CCL", "CESC", "CIEINDIA", "CAMPUS", "CANFINHOME", "CAPLIPOINT", "CGCL", "CASTROLIND", 
-    "CEATLTD", "CELLO", "CENTRALBK", "CDSL", "CENTURYPLY", "CERA", "CHALET", "CHAMBLFERT", 
-    "CHEMPLASTS", "CHENNPETRO", "CHOLAHLDNG", "CUB", "CLEAN", "CAMS", "CONCORDBIO", "CRAFTSMAN", 
-    "CREDITACC", "CROMPTON", "CYIENT", "DOMS", "DATAPATTNS", "DEEPAKFERT", "DEVYANI", "LALPATHLAB", 
-    "EIDPARRY", "EIHOTEL", "EASEMYTRIP", "ELECON", "ELGIEQUIP", "EMCURE", "ENGINERSIN", "EQUITASBNK", 
-    "ERIS", "FINEORG", "FINCABLES", "FINPIPE", "FSL", "FIVESTAR", "GRINFRA", "GVT&D", 
-    "GRSE", "GILLETTE", "GLENMARK", "GODIGIT", "GPIL", "GODFRYPHLP", "GODREJAGRO", "GRANULES", 
-    "GRAPHITE", "GESHIP", "GAEL", "GMDCLTD", "GNFC", "GPPL", "GSFC", "GSPL", 
-    "HEG", "HBLENGINE", "HFCL", "HAPPSTMNDS", "HSCL", "HINDCOPPER", "HOMEFIRST", "HONASA", 
-    "ISEC", "IFCI", "IIFL", "INOXINDIA", "IRCON", "ITI", "INDGN", "INDIACEM", 
-    "INDIAMART", "IEX", "INOXWIND", "INTELLECT", "JBCHEPHARM", "JBMA", "JKLAKSHMI", "JKTYRE", 
-    "JMFINANCIL", "JPPOWER", "J&KBANK", "JINDALSAW", "JUBLINGREA", "JUBLPHARMA", "JWL", "JUSTDIAL", 
-    "JYOTHYLAB", "JYOTICNC", "KNRCON", "KSB", "KAJARIACER", "KPIL", "KANSAINER", "KARURVYSYA", 
-    "KAYNES", "KEC", "KFINTECH", "KIRLOSBROS", "KIRLOSENG", "KIMS", "LATENTVIEW", "LAURUSLABS", 
-    "LEMONTREE", "MMTC", "MGL", "MAHSEAMLES", "MAHLIFE", "MANAPPURAM", "MASTEK", "METROPOLIS", 
-    "MINDACORP", "MOTILALOFS", "MCX", "NATCOPHARM", "NBCC", "NCC", "NSLNISP", "NH", 
-    "NATIONALUM", "NAVISFLUOR", "NETWEB", "NETWORK18", "NEWGEN", "NUVAMA", "NUVOCO", "OLECTRA", 
-    "PCBL", "PNBHOUSING", "PNCINFRA", "PTCIL", "PVRINOX", "PFIZER", "PEL", "PPLPHARMA", 
-    "POLYMED", "PRAJIND", "QUESS", "RRKABEL", "RBLBANK", "RHIM", "RITES", "RADICO", 
-    "RAILTEL", "RAINBOW", "RAJESHEXPO", "RKFORGE", "RCF", "RATNAMANI", "RTNINDIA", "RAYMOND", 
-    "REDINGTON", "ROUTE", "SBFC", "SAMMAANCAP", "SANOFI", "SAPPHIRE", "SAREGAMA", "SCHNEIDER", 
-    "SCI", "RENUKA", "SHYAMMETL", "SIGNATURE", "SOBHA", "SONATSOFTW", "SWSOLAR", "SUMICHEM", 
-    "SPARC", "SUVENPHAR", "SWANENERGY", "SYRMA", "TBOTEK", "TVSSCS", "TANLA", "TTML", 
-    "TECHNOE", "TEJASNET", "RAMCOCEM", "TITAGARH", "TRIDENT", "TRIVENI", "TRITURBINE", "UCOBANK", 
-    "UTIAMC", "UJJIVANSFB", "USHAMART", "VGUARD", "VIPIND", "DBREALTY", "VTL", "VARROC", 
-    "MANYAVAR", "VIJAYA", "VINATIORGA", "WELCORP", "WELSPUNLIV", "WESTLIFE", "WHIRLPOOL", "ZEEL", 
-    "ZENSARTECH", "ECLERX"
+# Valid symbols based on your working code
+VALID_NIFTY_SMALLCAP_SYMBOLS = [
+    "AFFLE", "ASTERDM", "DEEPAKFERT", "ERIS", "FSL", "GLENMARK", "GOLDBEES", 
+    "JMFINANCIL", "JUBLPHARMA", "KFINTECH", "KIMS", "LAURUSLABS", "NH", 
+    "PCBL", "RADICO", "WELCORP", "REDINGTON", "SONATSOFTW", "TRIVENI", 
+    "TRIDENT", "CYIENT", "CAMS", "METROPOLIS", "LEMONTREE", "MASTEK",
+    "TANLA", "KAYNES", "RAINBOW", "CROMPTON", "VGUARD", "SOBHA",
+    "MINDACORP", "NEWGEN", "ECLERX", "SYRMA", "AMBER", "APLLTD", 
+    "CRAFTSMAN", "FINPIPE", "JYOTHYLAB", "MAPMYINDIA", "RATNAMANI",
+    "AARTIIND", "AAVAS", "ALKYLAMINE", "ALOKINDS", "ANANDRATHI",
+    "ANANTRAJ", "ANGELONE", "APARINDS", "APTUS", "ASAHIINDIA",
+    "ATUL", "AVANTIFEED", "BASF", "BEML", "BLS", "BALAMINES",
+    "BALRAMCHIN", "BATAINDIA", "BIKAJI", "BIRLACORPN", "BSOFT",
+    "BLUEDART", "BLUESTARCO", "BBTC", "BRIGADE", "CCL", "CESC",
+    "CIEINDIA", "CAMPUS", "CANFINHOME", "CAPLIPOINT", "CGCL",
+    "CASTROLIND", "CEATLTD", "CELLO", "CENTRALBK", "CDSL",
+    "CENTURYPLY", "CERA", "CHALET", "CHAMBLFERT", "CHEMPLASTS",
+    "CHENNPETRO", "CHOLAHLDNG", "CUB", "CLEAN", "CONCORDBIO",
+    "CREDITACC", "DOMS", "DATAPATTNS", "DEVYANI", "LALPATHLAB",
+    "EIDPARRY", "EIHOTEL", "EASEMYTRIP", "ELECON", "ELGIEQUIP",
+    "EMCURE", "ENGINERSIN", "EQUITASBNK", "FINEORG", "FINCABLES",
+    "FIVESTAR", "GRINFRA", "GRSE", "GILLETTE", "GODIGIT", "GPIL",
+    "GODFRYPHLP", "GODREJAGRO", "GRANULES", "GRAPHITE", "GSHIP",
+    "GAEL", "GMDCLTD", "GNFC", "GPPL", "GSFC", "GSPL", "HEG",
+    "HBLENGINE", "HFCL", "HAPPSTMNDS", "HSCL", "HINDCOPPER",
+    "HOMEFIRST", "HONASA", "ISEC", "IFCI", "IIFL", "INOXINDIA",
+    "IRCON", "ITI", "INDGN", "INDIACEM", "INDIAMART", "IEX",
+    "INOXWIND", "INTELLECT", "JBCHEPHARM", "JBMA", "JKLAKSHMI",
+    "JKTYRE", "JPPOWER", "JINDALSAW", "JUBLINGREA", "JWL",
+    "JUSTDIAL", "JYOTICNC", "KNRCON", "KSB", "KAJARIACER",
+    "KPIL", "KANSAINER", "KARURVYSYA", "KEC", "KIRLOSBROS",
+    "KIRLOSENG", "LATENTVIEW", "MMTC", "MGL", "MAHSEAMLES",
+    "MAHLIFE", "MANAPPURAM", "MOTILALOFS", "MCX", "NATCOPHARM",
+    "NBCC", "NCC", "NSLNISP", "NATIONALUM", "NAVISFLUOR",
+    "NETWEB", "NETWORK18", "NUVAMA", "NUVOCO", "OLECTRA",
+    "PNBHOUSING", "PNCINFRA", "PTCIL", "PVRINOX", "PFIZER",
+    "PEL", "PPLPHARMA", "POLYMED", "PRAJIND", "QUESS", "RRKABEL",
+    "RBLBANK", "RHIM", "RITES", "RAILTEL", "RAJESHEXPO",
+    "RKFORGE", "RCF", "RTNINDIA", "RAYMOND", "ROUTE", "SBFC",
+    "SAMMAANCAP", "SANOFI", "SAPPHIRE", "SAREGAMA", "SCHNEIDER",
+    "SCI", "RENUKA", "SHYAMMETL", "SIGNATURE", "SWSOLAR",
+    "SUMICHEM", "SPARC", "SUVENPHAR", "SWANENERGY", "TBOTEK",
+    "TVSSCS", "TTML", "TECHNOE", "TEJASNET", "RAMCOCEM",
+    "TITAGARH", "TRITURBINE", "UCOBANK", "UTIAMC", "UJJIVANSFB",
+    "USHAMART", "VIPIND", "DBREALTY", "VTL", "VARROC",
+    "MANYAVAR", "VIJAYA", "VINATIORGA", "WELSPUNLIV", "WESTLIFE",
+    "WHIRLPOOL", "ZEEL", "ZENSARTECH"
 ]
 
 class GitHubIntegration:
@@ -357,35 +370,48 @@ class EnhancedStockScanner:
             return False
 
     def fetch_historical_data(self, symbol: str, start: str, end: str) -> pd.DataFrame:
-        """Fetch historical data with better error handling and timeout"""
-        try:
-            response = self.fyers.history({
-                "symbol": f"NSE:{symbol}-EQ",
-                "resolution": "D",
-                "date_format": 1,
-                "range_from": start,
-                "range_to": end,
-                "cont_flag": "1"
-            })
+        """Fetch historical data with chunked approach exactly like working code"""
+        all_data = []
+        start_date = pd.Timestamp(start)
+        end_date = pd.Timestamp(end)
+        chunk_days = 365
 
-            if response.get("s") != "ok":
-                st.warning(f"⚠️ No data for {symbol}: {response.get('message', 'Unknown error')}")
-                return pd.DataFrame()
+        current = end_date
+        while current >= start_date:
+            chunk_start = max(start_date, current - pd.Timedelta(days=chunk_days - 1))
+            
+            try:
+                response = self.fyers.history({
+                    "symbol": f"NSE:{symbol}-EQ",
+                    "resolution": "D",
+                    "date_format": 1,
+                    "range_from": chunk_start.strftime("%Y-%m-%d"),
+                    "range_to": current.strftime("%Y-%m-%d"),
+                    "cont_flag": "1"
+                })
+                
+                if response["s"] == "ok":
+                    candles = response.get("candles", [])
+                    all_data.extend(candles)
+                else:
+                    print(f"Data fetch error for {symbol} from {chunk_start.strftime('%Y-%m-%d')} to {current.strftime('%Y-%m-%d')}: {response.get('message', 'Unknown error')}")
+                    
+            except Exception as e:
+                print(f"Exception fetching {symbol} chunk {chunk_start.strftime('%Y-%m-%d')} to {current.strftime('%Y-%m-%d')}: {str(e)}")
+                
+            current = chunk_start - pd.Timedelta(days=1)
+            time.sleep(0.5)
 
-            candles = response.get("candles", [])
-            if not candles:
-                st.warning(f"⚠️ Empty data for {symbol}")
-                return pd.DataFrame()
-
-            df = pd.DataFrame(candles, columns=["timestamp", "open", "high", "low", "close", "volume"])
-            df["timestamp"] = pd.to_datetime(df["timestamp"], unit="s").dt.tz_localize("UTC").dt.tz_convert("Asia/Kolkata")
-            df = df.set_index("timestamp").sort_index()
-            df.index = df.index.normalize()
-            return df
-
-        except Exception as e:
-            st.warning(f"⚠️ Error fetching {symbol}: {str(e)}")
+        if not all_data:
+            print(f"No data fetched for {symbol} across all chunks.")
             return pd.DataFrame()
+
+        # Process the data exactly like your working code
+        df = pd.DataFrame(all_data, columns=["timestamp", "open", "high", "low", "close", "volume"])
+        df["timestamp"] = pd.to_datetime(df["timestamp"], unit="s").dt.tz_localize("UTC").dt.tz_convert("Asia/Kolkata")
+        df = df.set_index("timestamp").sort_index()
+        df.index = df.index.normalize()  # Normalize to date-only
+        return df
 
     def calculate_momentum_volatility_fitp(self, df: pd.DataFrame, date: pd.Timestamp, 
                                           lookback_period: int = 12, last_month_exclusion: int = 0) -> Tuple[Optional[float], Optional[float], Optional[float]]:
@@ -473,36 +499,37 @@ class EnhancedStockScanner:
             failed_symbols = []
             successful_count = 0
 
+            # Collect all fetch errors to show at the end
+            fetch_errors = []
+
             for i, symbol in enumerate(symbols):
-                try:
-                    status_text.text(f"📈 Fetching {symbol} ({i+1}/{len(symbols)}) - Success: {successful_count}")
-                    
-                    df = self.fetch_historical_data(
-                        symbol, 
-                        start.strftime("%Y-%m-%d"), 
-                        end.strftime("%Y-%m-%d")
-                    )
-                    
-                    if not df.empty:
-                        hist_data[symbol] = df
-                        successful_count += 1
-                    else:
-                        failed_symbols.append(symbol)
-                    
-                    progress_bar.progress((i + 1) / len(symbols))
-                    
-                    # Rate limiting
-                    time.sleep(0.3)
-                    
-                except Exception as e:
-                    st.warning(f"⚠️ Failed to fetch {symbol}: {str(e)}")
+                status_text.text(f"📈 Fetching {symbol} ({i+1}/{len(symbols)}) - Success: {successful_count}")
+                
+                df = self.fetch_historical_data(
+                    symbol, 
+                    start.strftime("%Y-%m-%d"), 
+                    end.strftime("%Y-%m-%d")
+                )
+                
+                if not df.empty:
+                    hist_data[symbol] = df
+                    successful_count += 1
+                else:
                     failed_symbols.append(symbol)
-                    continue
+                    fetch_errors.append(f"No data for {symbol}")
+                
+                progress_bar.progress((i + 1) / len(symbols))
+
+            # Show combined error message like your working code
+            if fetch_errors:
+                combined_message = "⚠️ Data Fetch Errors:\n" + "\n".join(fetch_errors[:10])  # Show first 10 errors
+                if len(fetch_errors) > 10:
+                    combined_message += f"\n... and {len(fetch_errors) - 10} more errors"
+                st.warning(combined_message)
 
             self.cached_data = hist_data
             
-            if failed_symbols:
-                st.warning(f"⚠️ Failed to fetch data for {len(failed_symbols)} symbols: {', '.join(failed_symbols[:5])}{'...' if len(failed_symbols) > 5 else ''}")
+            st.info(f"📊 Successfully fetched data for {successful_count}/{len(symbols)} symbols")
 
             # Save cache with timestamp
             try:
@@ -515,21 +542,21 @@ class EnhancedStockScanner:
             except Exception as e:
                 st.warning(f"⚠️ Cache save error: {str(e)}")
 
-        # Calculate scores
-        st.info("🧮 Calculating momentum scores...")
+        # Calculate scores - only for symbols with data
+        valid_symbols = [s for s in symbols if s in self.cached_data and not self.cached_data[s].empty]
+        
+        if not valid_symbols:
+            st.error("❌ No valid symbols with data found")
+            return []
+        
+        st.info(f"🧮 Calculating momentum scores for {len(valid_symbols)} valid symbols...")
         progress_bar = st.progress(0)
         status_text = st.empty()
         processed_count = 0
 
-        for i, symbol in enumerate(symbols):
-            if symbol not in self.cached_data:
-                continue
-                
-            status_text.text(f"🔍 Analyzing {symbol} ({processed_count+1}/{len(self.cached_data)})")
+        for i, symbol in enumerate(valid_symbols):
+            status_text.text(f"🔍 Analyzing {symbol} ({i+1}/{len(valid_symbols)})")
             df = self.cached_data[symbol]
-
-            if df.empty:
-                continue
 
             momentum, volatility, fitp = self.calculate_momentum_volatility_fitp(
                 df, cutoff_date, lookback_period, last_month_exclusion
@@ -545,7 +572,7 @@ class EnhancedStockScanner:
                 scores.append((symbol, momentum, volatility, fitp, score))
             
             processed_count += 1
-            progress_bar.progress(processed_count / len(self.cached_data))
+            progress_bar.progress(processed_count / len(valid_symbols))
 
         # Clear progress indicators
         progress_bar.empty()
@@ -652,15 +679,16 @@ def main():
             st.subheader("📁 Stock Universe")
             stock_source = st.radio(
                 "Choose stock universe:",
-                ["📈 Nifty SmallCap 250 (Default)", "📁 Upload CSV", "✏️ Manual Entry"],
+                ["📈 Validated SmallCap Stocks", "📁 Upload CSV", "✏️ Manual Entry"],
                 horizontal=True
             )
 
-            if stock_source == "📈 Nifty SmallCap 250 (Default)":
-                symbols = NIFTY_SMALLCAP_250_SYMBOLS
-                st.success(f"✅ Using {len(symbols)} stocks from Nifty SmallCap 250")
+            if stock_source == "📈 Validated SmallCap Stocks":
+                # Use a subset of validated symbols for testing
+                symbols = VALID_NIFTY_SMALLCAP_SYMBOLS[:20]  # Start with first 20 symbols
+                st.success(f"✅ Using {len(symbols)} validated stocks")
 
-                with st.expander(f"📋 View stock list ({len(symbols)} symbols)"):
+                with st.expander(f"📋 View validated stock list ({len(symbols)} symbols)"):
                     cols = st.columns(5)
                     for i, symbol in enumerate(symbols):
                         with cols[i % 5]:
@@ -678,18 +706,18 @@ def main():
                             st.dataframe(df.head(), use_container_width=True)
                         else:
                             st.error("❌ CSV must have 'Symbol' column")
-                            symbols = NIFTY_SMALLCAP_250_SYMBOLS[:20]
+                            symbols = VALID_NIFTY_SMALLCAP_SYMBOLS[:10]
                     except Exception as e:
                         st.error(f"❌ Error: {str(e)}")
-                        symbols = NIFTY_SMALLCAP_250_SYMBOLS[:20]
+                        symbols = VALID_NIFTY_SMALLCAP_SYMBOLS[:10]
                 else:
                     st.info("📤 Upload CSV file")
-                    symbols = NIFTY_SMALLCAP_250_SYMBOLS[:20]
+                    symbols = VALID_NIFTY_SMALLCAP_SYMBOLS[:10]
 
             else:  # Manual Entry
                 manual_symbols = st.text_area(
                     "Enter symbols (comma-separated):",
-                    value="RELIANCE, TCS, INFY, HDFCBANK, ICICIBANK",
+                    value="KFINTECH, LAURUSLABS, DEEPAKFERT, ERIS, AFFLE",
                     help="Enter stock symbols separated by commas"
                 )
 
@@ -697,7 +725,7 @@ def main():
                     symbols = [s.strip().upper() for s in manual_symbols.split(",") if s.strip()]
                     st.success(f"✅ {len(symbols)} symbols ready")
                 else:
-                    symbols = NIFTY_SMALLCAP_250_SYMBOLS[:20]
+                    symbols = VALID_NIFTY_SMALLCAP_SYMBOLS[:10]
 
             # Clear cache button
             col1, col2 = st.columns([3, 1])
