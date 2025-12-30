@@ -1,0 +1,19 @@
+{
+  "filename": "stock_scan_20250715_055254_volatility.csv",
+  "timestamp": "2025-07-15T05:52:54.456348",
+  "rows": 10,
+  "columns": [
+    "Symbol",
+    "Momentum",
+    "Volatility",
+    "FITP",
+    "Score"
+  ],
+  "scan_date": "2025-07-15",
+  "generated_by": "Fyers Stock Scanner Pro",
+  "file_size_kb": 0.39,
+  "scan_type": "Volatility",
+  "lookback_days": 30,
+  "min_score": 0.0,
+  "max_results": 20
+}
